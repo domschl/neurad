@@ -158,5 +158,6 @@ int main(int, char **) {
     NRTensor t2 = NRTensor(3, 3, NRTensor::MatrixInitType::RandInt);
     NRTensor *t3 = t1 + t2;
     cout << t1 << t2 << *t3;
+    del t3;
     // testmat();
 }
