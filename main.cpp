@@ -1,20 +1,105 @@
 #include <iostream>
+#include <iomanip>
+#include <random>
 #include <math.h>
 
 using std::cout;
 using std::endl;
 
 //#include <BLAS.h>
-//#include <cblas>
+#include <Accelerate/Accelerate.h>
+
 typedef float NTFloat;
-extern "C" void sgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, NTFloat *ALPHA, NTFloat *A, const int *LDA, NTFloat *B, const int *LDB, NTFloat *BETA, NTFloat *C, const int *LDC);
+// extern "C" void sgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, NTFloat *ALPHA, NTFloat *A, const int *LDA, NTFloat *B, const int *LDB, NTFloat *BETA, NTFloat *C, const int *LDC);
 
 class NRTensor {
   public:
-    NTFloat data;
-    NRTensor() {
+    NTFloat *data = nullptr;
+    int x;
+    int y;
+    enum MatrixInitType { None,
+                          Zero,
+                          Unit,
+                          Random };
+    NRTensor(int y, int x, MatrixInitType t)
+        : y(y), x(x) {
+        data = (NTFloat *)malloc(x * y * sizeof(NTFloat));
+        switch (t) {
+        case None:
+            break;
+        case Zero:
+            for (int iy = 0; iy < y; iy++) {
+                int ry = iy * x;
+                for (int ix = 0; ix < x; ix++) {
+                    data[ry + ix] = 0.0;
+                }
+            }
+            break;
+        case Unit:
+            for (int iy = 0; iy < y; iy++) {
+                int ry = iy * x;
+                for (int ix = 0; ix < x; ix++) {
+                    if (iy != ix)
+                        data[ry + ix] = 0.0;
+                    else
+                        data[ry + ix] = 1.0;
+                }
+            }
+            break;
+        case Random:
+            std::random_device rd{};
+            std::mt19937 gen{rd()};
+            std::normal_distribution<> d{0, 1};
+            for (int iy = 0; iy < y; iy++) {
+                int ry = iy * x;
+                for (int ix = 0; ix < x; ix++) {
+                    data[ry + ix] = d(gen);
+                }
+            }
+            break;
+        }
     }
     ~NRTensor() {
+        if (data != nullptr) {
+            free(data);
+        }
+    }
+    NTFloat get(int iy, int ix) {
+        return data[iy * x + ix];
+    }
+    void set(int iy, int ix, NTFloat v) {
+        data[iy + x + ix] = v;
+    }
+    void print(int precision = 2, bool brackets = true) {
+        cout << std::fixed << std::setprecision(precision);
+        for (int iy = 0; iy < y; iy++) {
+            int ry = iy * x;
+            if (y == 1)
+                cout << "]";
+            else {
+                if (iy == 0)
+                    cout << "⎛";
+                else if (iy > 0 && iy < y - 1)
+                    cout << "⎜";
+                else
+                    cout << "⎝";
+            }
+            for (int ix = 0; ix < x; ix++) {
+                cout << data[ry + ix];
+                if (ix < x - 1) cout << " ";
+            }
+            if (y == 1)
+                cout << "]";
+            else {
+                if (iy == 0)
+                    cout << "⎞";
+                else if (iy > 0 && iy < y - 1)
+                    cout << "⎟";
+                else
+                    cout << "⎠";
+            }
+            cout << endl;
+        }
     }
 };
 
@@ -42,6 +127,7 @@ void testmat() {
     return;
 }
 int main(int, char **) {
-    NRTensor t1 = NRTensor();
-    testmat();
+    NRTensor t1 = NRTensor(4, 4, NRTensor::MatrixInitType::Unit);
+    t1.print();
+    // testmat();
 }

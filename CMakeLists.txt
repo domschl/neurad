@@ -4,6 +4,8 @@ project(neurad VERSION 0.1.0)
 include(CTest)
 enable_testing()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 17)
 find_package(BLAS REQUIRED)
 
 if(BLAS_FOUND)
