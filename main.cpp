@@ -6,7 +6,7 @@
 using std::cout;
 using std::endl;
 
-//#include <BLAS.h>
+// XXX Apple only:
 #include <Accelerate/Accelerate.h>
 
 typedef float NTFloat;
@@ -70,12 +70,23 @@ class NRTensor {
     void set(int iy, int ix, NTFloat v) {
         data[iy + x + ix] = v;
     }
-    void print(int precision = 2, bool brackets = true) {
+    NRTensor *operator+(NRTensor &r) {
+        if (this->x != r.x || this->y != r.y) return new NRTensor(0, 0, None);
+        NRTensor *s = new NRTensor(this->y, this->x, None);
+        for (int iy = 0; iy < this->y; iy++) {
+            int ry = iy * r.x;
+            for (int ix = 0; ix < this->x; ix++) {
+                s->data[ry + ix] = this->data[ry + ix] + r.data[ry + ix];
+            }
+        }
+        return s;
+    }
+    void print(int precision = 2, bool brackets = true) const {
         cout << std::fixed << std::setprecision(precision);
         for (int iy = 0; iy < y; iy++) {
             int ry = iy * x;
             if (y == 1)
-                cout << "]";
+                cout << "[";
             else {
                 if (iy == 0)
                     cout << "⎛";
@@ -103,6 +114,11 @@ class NRTensor {
     }
 };
 
+std::ostream &operator<<(std::ostream &os, const NRTensor &mat) {
+    mat.print();
+    return os;
+}
+
 void testmat() {
     NTFloat A[4] = {1, 2, 3, 4};
     NTFloat B[4] = {1, 0, 1, 0};
@@ -127,7 +143,9 @@ void testmat() {
     return;
 }
 int main(int, char **) {
-    NRTensor t1 = NRTensor(4, 4, NRTensor::MatrixInitType::Unit);
-    t1.print();
+    NRTensor t1 = NRTensor(1, 1, NRTensor::MatrixInitType::Unit);
+    NRTensor t2 = NRTensor(1, 1, NRTensor::MatrixInitType::Random);
+    NRTensor *t3 = t1 + t2;
+    cout << t1 << t2 << *t3;
     // testmat();
 }
