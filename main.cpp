@@ -20,10 +20,16 @@ class NRTensor {
     enum MatrixInitType { None,
                           Zero,
                           Unit,
-                          Random };
+                          Random,
+                          RandInt };
     NRTensor(int y, int x, MatrixInitType t)
         : y(y), x(x) {
         data = (NTFloat *)malloc(x * y * sizeof(NTFloat));
+        std::random_device rd{};
+        std::mt19937 gen{rd()};
+        std::normal_distribution<> dn{0, 1};
+        std::uniform_int_distribution<> di{0, 9};
+
         switch (t) {
         case None:
             break;
@@ -47,13 +53,18 @@ class NRTensor {
             }
             break;
         case Random:
-            std::random_device rd{};
-            std::mt19937 gen{rd()};
-            std::normal_distribution<> d{0, 1};
             for (int iy = 0; iy < y; iy++) {
                 int ry = iy * x;
                 for (int ix = 0; ix < x; ix++) {
-                    data[ry + ix] = d(gen);
+                    data[ry + ix] = dn(gen);
+                }
+            }
+            break;
+        case RandInt:
+            for (int iy = 0; iy < y; iy++) {
+                int ry = iy * x;
+                for (int ix = 0; ix < x; ix++) {
+                    data[ry + ix] = di(gen);
                 }
             }
             break;
@@ -96,7 +107,7 @@ class NRTensor {
                     cout << "⎝";
             }
             for (int ix = 0; ix < x; ix++) {
-                cout << data[ry + ix];
+                cout << std::setw(6) << data[ry + ix];
                 if (ix < x - 1) cout << " ";
             }
             if (y == 1)
@@ -143,8 +154,8 @@ void testmat() {
     return;
 }
 int main(int, char **) {
-    NRTensor t1 = NRTensor(1, 1, NRTensor::MatrixInitType::Unit);
-    NRTensor t2 = NRTensor(1, 1, NRTensor::MatrixInitType::Random);
+    NRTensor t1 = NRTensor(3, 3, NRTensor::MatrixInitType::RandInt);
+    NRTensor t2 = NRTensor(3, 3, NRTensor::MatrixInitType::RandInt);
     NRTensor *t3 = t1 + t2;
     cout << t1 << t2 << *t3;
     // testmat();
