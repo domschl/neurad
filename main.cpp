@@ -12,7 +12,7 @@ using std::vector;
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
 #else
-// extern "C" void sgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, NRFloat *ALPHA, NRFloat *A, const int *LDA, NRFloat *B, const int *LDB, NRFloat *BETA, NRFloat *C, const int *LDC);
+#error "Put your BLAS here"
 #endif
 
 #ifdef USE_SINGLE_PRECISION_FLOAT
@@ -34,6 +34,10 @@ class NRMatrix {
 
   private:
     NRSize i, ix, iy, ry, rx;
+    // A bit of FORTRAN-charm for BLAS:
+    int M, K, N, LDA, LDB, LDC;
+    float ALPHA = 1.0, BETA = 0.0;
+    CBLAS_TRANSPOSE TRANSA = CblasNoTrans, TRANSB = CblasNoTrans;
 
   public:
     NRMatrix() {
@@ -158,17 +162,6 @@ class NRMatrix {
     void set(NRSize yi, NRSize xi, NRFloat v) {
         mx[yi * x + xi] = v;
     }
-    /*NRMatrix *operator+(NRMatrix &r) {
-        if (this->x != r.x || this->y != r.y) return new NRMatrix(0, 0);
-        NRMatrix *s = new NRMatrix(this->y, this->x);
-        for (iy = 0; iy < this->y; iy++) {
-            ry = iy * r.x;
-            for (ix = 0; ix < this->x; ix++) {
-                s->mx[ry + ix] = this->mx[ry + ix] + r.mx[ry + ix];
-            }
-        }
-        return s;
-    }*/
     NRMatrix operator+(NRMatrix &r) {
         NRMatrix s;
         if (this->x != r.x || this->y != r.y) {
@@ -188,17 +181,14 @@ class NRMatrix {
         if (this->x != r.y) {
             return std::move(NRMatrix(0, 0));
         } else {
-            CBLAS_TRANSPOSE TRANSA = CblasNoTrans, TRANSB = CblasNoTrans;
-            int M = this->y;
-            int K = this->x;
-            int N = r.x;
-            int LDA = K;
-            int LDB = N;
-            int LDC = N;
-            float ALPHA = 1.0;
+            M = this->y;
+            K = this->x;
+            N = r.x;
+            LDA = K;
+            LDB = N;
+            LDC = N;
             NRMatrix C(M, N);
             C.zero();
-            float BETA = 0.0;
             cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA, (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
             return std::move(C);
         }
@@ -303,18 +293,13 @@ std::ostream &operator<<(std::ostream &os, const NRMatrix &mat) {
 }
 
 int main(int, char **) {
-    NRMatrix t1 = NRMatrix(2, 3, {1, 2, 3, 4, 5, 6});
-    NRMatrix t2 = NRMatrix(3, 2, {1, 0, 1, 0, 1, 0});
+    NRMatrix t1 = NRMatrix(3, 2, {1, 2, 3, 4, 5, 6});
+    NRMatrix t2 = NRMatrix(2, 3, {1, 0, 1, 0, 1, 0});
     // t1.randInt(0, 1000000000);
     // t2.randInt(-100, 1000000000);
     //  t1.randNormal(0, 1e20);
     //  t2.randNormal(0, 1e20);
     cout << t1 << t2;
-    // t1.t();
-    // t2.t();
-    // cout << t1 << t2;
     NRMatrix t3 = t1 * t2;
     cout << t3;
-    // delete t3;
-    //  testmat();
 }
