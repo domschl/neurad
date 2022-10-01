@@ -64,6 +64,7 @@ class NRMatrix {
     }
     ~NRMatrix() {
     }
+    /* We get all this for free, since using std::vector:
     //! Copy
     NRMatrix(const NRMatrix &source_matrix)
         : x(source_matrix.x), y(source_matrix.y), l(source_matrix.l), mx(source_matrix.mx) {
@@ -110,7 +111,7 @@ class NRMatrix {
         }
         return *this;
     }
-
+    */
     void zero() {
         for (NRSize i = 0; i < l; i++)
             mx[i] = 0.0;
@@ -177,6 +178,8 @@ class NRMatrix {
         }
         return std::move(s);
     }
+    //! this is the single part of any neural network implementation that has influence on performance:
+    //! matrix multiplication, everything else matters much, much less:
     NRMatrix operator*(NRMatrix &r) {
         if (this->x != r.y) {
             return std::move(NRMatrix(0, 0));
@@ -189,7 +192,8 @@ class NRMatrix {
             LDC = N;
             NRMatrix C(M, N);
             C.zero();
-            cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA, (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
+            cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA,
+                        (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
             return std::move(C);
         }
     }
@@ -222,7 +226,7 @@ class NRMatrix {
         }
         return true;
     }
-    // print() is used by << overload, hence it and all methods is uses
+    // print() is used by cout << overload, hence it and all methods is uses
     // need to be const.
     void print(int precision = 2, bool brackets = true) const {
         NRSize xi, yi, yr;
