@@ -32,15 +32,16 @@ class NRMatrix;
 class NRMatrix {
   public:
     vector<NRFloat> mx;
+    vector<NRFloat> grad;
     NRSize x;
     NRSize y;
     NRSize l;
     std::string name = "";
-    std::string op = "";
-    std::set<NRMatrix *> children;
+    std::vector<NRMatrix> children;
     std::function<void()> backprop;
 
   private:
+    int defaultPrecision = 3;
     NRSize i, ix, iy, ry, rx;
     // A bit of FORTRAN-charm for BLAS:
     int M, K, N, LDA, LDB, LDC;
@@ -52,14 +53,17 @@ class NRMatrix {
         x = 0;
         y = 0;
         l = 0;
+        name = "";
     }
-    NRMatrix(NRSize y, NRSize x, std::string name = "", std::string op = "")
-        : y(y), x(x), name(name), op(op) {
+    NRMatrix(NRSize y, NRSize x, std::string name = "")
+        : y(y), x(x), name(name) {
         l = x * y;
         mx = vector<NRFloat>(l);
+        grad = mx;
+        zeroGrad();
     }
-    NRMatrix(NRSize y, NRSize x, vector<NRFloat> v, std::string name = "", std::string op = "")
-        : y(y), x(x), name(name), op(op) {
+    NRMatrix(NRSize y, NRSize x, vector<NRFloat> v, std::string name = "")
+        : y(y), x(x), name(name) {
         l = x * y;
         if (v.size() == l)
             mx = v;
@@ -69,6 +73,8 @@ class NRMatrix {
             for (int i = 0; i < l; i++)
                 mx[i] = v[i];
         }
+        grad = mx;
+        zeroGrad();
     }
     ~NRMatrix() {
     }
@@ -121,8 +127,14 @@ class NRMatrix {
     }
     */
     void zero() {
-        for (NRSize i = 0; i < l; i++)
+        for (NRSize i = 0; i < l; i++) {
             mx[i] = 0.0;
+            grad[i] = 0.0;
+        }
+    }
+    void zeroGrad() {
+        for (NRSize i = 0; i < l; i++)
+            grad[i] = 0.0;
     }
     void unit() {
         for (iy = 0; iy < y; iy++) {
@@ -144,6 +156,9 @@ class NRMatrix {
                     NRFloat s = mx[ry + ix];
                     mx[ry + ix] = mx[rx + iy];
                     mx[rx + iy] = s;
+                    s = grad[ry + ix];
+                    grad[ry + ix] = grad[rx + iy];
+                    grad[rx + iy] = s;
                 }
             }
         }
@@ -157,6 +172,7 @@ class NRMatrix {
         std::normal_distribution<> dn{mean, var};
         for (i = 0; i < l; i++)
             mx[i] = dn(gen);
+        grad[i] = 0;
     }
     void randInt(int a, int b) {  // Inclusive [a,b]
         std::random_device rd{};
@@ -164,6 +180,7 @@ class NRMatrix {
         std::uniform_int_distribution<> di{a, b};
         for (i = 0; i < l; i++)
             mx[i] = di(gen);
+        grad[i] = 0;
     }
     NRFloat get(NRSize yi, NRSize xi) {
         return mx[yi * x + xi];
@@ -174,7 +191,8 @@ class NRMatrix {
     NRMatrix operator+(NRMatrix &r) {
         NRMatrix s;
         if (this->x != r.x || this->y != r.y) {
-            s = NRMatrix(0, 0);
+            std::cerr << "Invalid matrix add: " << this->name << '+' << r.name << " " << this->x << "," << this->y << "!=" << r.x << "," << r.y << "abort!" << endl;
+            s = NRMatrix(0, 0, {}, "NaN");
         } else {
             s = NRMatrix(this->y, this->x);
             for (iy = 0; iy < this->y; iy++) {
@@ -184,13 +202,17 @@ class NRMatrix {
                 }
             }
         }
+        s.name = "(" + this->name + "+" + r.name + ")";
+        s.children.push_back(NRMatrix(*this));
+        s.children.push_back(NRMatrix(r));
         return std::move(s);
     }
     //! this is the single part of any neural network implementation that has influence on performance:
     //! matrix multiplication, everything else matters much, much less:
     NRMatrix operator*(NRMatrix &r) {
         if (this->x != r.y) {
-            return std::move(NRMatrix(0, 0));
+            std::cerr << "Invalid matrix mult: " << this->name << "*" << r.name << " " << this->x << "!=" << r.y << ", abort!" << endl;
+            return std::move(NRMatrix(0, 0, {}, "NaN"));
         } else {
             M = this->y;
             K = this->x;
@@ -207,6 +229,10 @@ class NRMatrix {
             cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
                         (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
 #endif
+            C.name = "[" + this->name + "*" + r.name + "]";
+            std::cerr << "Cor? " << C.name << endl;
+            C.children.push_back(NRMatrix(*this));
+            C.children.push_back(NRMatrix(r));
             return std::move(C);
         }
     }
@@ -239,15 +265,23 @@ class NRMatrix {
         }
         return true;
     }
+    void setDefaultPrecision(int precision = 3) {
+        defaultPrecision = precision;
+    }
+    int getDefaultPrecision() const {
+        return defaultPrecision;
+    }
+
     // print() is used by cout << overload, hence it and all methods is uses
     // need to be const.
-    void print(int precision = 2, bool brackets = true) const {
+    void print(int precision = -1, bool brackets = true) const {
         NRSize xi, yi, yr;
         NRFloat ma, mn;
         int lp;
         bool isint;
         bool issci;
         bool use_pref = false;
+        if (precision == -1) precision = getDefaultPrecision();
         std::string pref, spref;
         NRSize prefline;
         if (name != "") {
@@ -319,6 +353,25 @@ class NRMatrix {
             cout << endl;
         }
     }
+    void family(int gen = 0) {
+        if (gen == 0) cout << "Family:" << endl;
+        cout << "gen " << gen + 1 << endl;
+        for (int i = 0; i < gen; i++)
+            cout << "  ";
+        cout << name;
+        if (l == 0) {
+            cout << " = INVALID MATRIX, abort!" << endl;
+            return;
+        }
+        if (children.size() == 0) {
+            cout << "]" << endl;
+            return;
+        }
+        cout << endl;
+        for (NRMatrix child : children) {
+            child.family(gen + 1);
+        }
+    }
 };
 
 std::ostream &operator<<(std::ostream &os, const NRMatrix &mat) {
@@ -327,23 +380,39 @@ std::ostream &operator<<(std::ostream &os, const NRMatrix &mat) {
 }
 
 int main(int, char **) {
+    /*
     NRMatrix t1 = NRMatrix(3, 2, (vector<NRFloat>){1, 2, 3, 4, 5, 6}, "t1");
-    NRMatrix t2 = NRMatrix(2, 3, (vector<NRFloat>){1, 0, 1, 0, 1, 0}, "t2");
-    // t1.randInt(0, 1000000000);
-    // t2.randInt(-100, 1000000000);
-    //  t1.randNormal(0, 1e20);
-    //  t2.randNormal(0, 1e20);
-    cout << t1 << t2;
-    NRMatrix t3 = t1 * t2;
-    t3.name = "t1*t2 = t3";
-    cout << t3;
-    // Output:
+    NRMatrix t2 = NRMatrix(3, 2, (vector<NRFloat>){1, 4, 1, 3, 1, 2}, "t2");
+    */
+    NRMatrix t3 = NRMatrix(2, 2, (vector<NRFloat>){1, 0, 1, 2}, "t3");
+    // cout << t1 << t2 << t3;
+    // NRMatrix t4 = t1 + t2 + t2 + t1;
+    // t4.name = "t4=t1+t2";
+    // cout << t4;
+    // NRMatrix t5 = t4 * t3;
+    NRMatrix t33 = t3 * t3 * t3;
+    NRMatrix t34 = t33 * t33 * t33;
+    cout << t34 << endl;
+    /*
+    NRMatrix t6 = t2 * t33 + t5 + t5;
+    t6.t();
+    NRMatrix t7 = t5 * t6;
+    cout << t7;
+    */
+    t34.family();
+    // Output (int example):
     //       ⎛1 2⎞
     //  t1 = ⎜3 4⎟
     //       ⎝5 6⎠
+    //       ⎛1 4⎞
+    //  t2 = ⎜1 3⎟
+    //       ⎝1 2⎠
     //       ⎛1 0 1⎞
-    //  t2 = ⎝0 1 0⎠
-    //               ⎛1 2 1⎞
-    //  t1*t2 = t3 = ⎜3 4 3⎟
-    //               ⎝5 6 5⎠
+    //  t3 = ⎝0 1 0⎠
+    //            ⎛2 6⎞
+    //  (t1+t2) = ⎜4 7⎟
+    //            ⎝6 8⎠
+    //                 ⎛2 6 2⎞
+    //  ((t1+t2)*t3) = ⎜4 7 4⎟
+    //                 ⎝6 8 6⎠
 }
