@@ -11,8 +11,10 @@ option(SINGLE_PRECISION_FLOAT "Use float 32-bit precision (OFF=double)" ON)
 
 if(SINGLE_PRECISION_FLOAT)
     add_definitions(-DUSE_SINGLE_PRECISION_FLOAT)
+    message(STATUS "Single precision")
 else()
     add_definitions(-DUSE_DOUBLE_PRECISION_FLOAT)
+    message(STATUS "Double precision")
 endif()
 
 if(APPLE)

@@ -36,7 +36,7 @@ class NRMatrix {
     NRSize i, ix, iy, ry, rx;
     // A bit of FORTRAN-charm for BLAS:
     int M, K, N, LDA, LDB, LDC;
-    float ALPHA = 1.0, BETA = 0.0;
+    NRFloat ALPHA = 1.0, BETA = 0.0;
     CBLAS_TRANSPOSE TRANSA = CblasNoTrans, TRANSB = CblasNoTrans;
 
   public:
@@ -192,8 +192,13 @@ class NRMatrix {
             LDC = N;
             NRMatrix C(M, N);
             C.zero();
+#if defined(USE_SINGLE_PRECISION_FLOAT)
             cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA,
                         (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
+#else
+            cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
+                        (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
+#endif
             return std::move(C);
         }
     }
