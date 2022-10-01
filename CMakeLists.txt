@@ -6,12 +6,31 @@ enable_testing()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
+
+option(SINGLE_PRECISION_FLOAT "Use float 32-bit precision (OFF=double)" ON)
+
+if(SINGLE_PRECISION_FLOAT)
+    add_definitions(-DUSE_SINGLE_PRECISION_FLOAT)
+else()
+    add_definitions(-DUSE_DOUBLE_PRECISION_FLOAT)
+endif()
+
+if(APPLE)
+    message(STATUS "Apple platform")
+
+    # include_directories("/usr/local/include")
+    # include_directories("/opt/homebrew/include")
+    SET(BLA_VENDOR "Apple" CACHE STRING "Set BLAS vendor (see FindBLAS) e.g. OpenBlas, Apple, Generic")
+else()
+    SET(BLA_VENDOR "" CACHE STRING "Set BLAS vendor (see FindBLAS) e.g. OpenBlas, Apple, Generic")
+endif()
+
 find_package(BLAS REQUIRED)
 
 if(BLAS_FOUND)
     include_directories(${BLAS_INCLUDE_DIRS})
     link_directories(${BLAS_LINK_DIRS})
-    message(STATUS "BLAS found.")
+    message(STATUS "BLAS " ${BLA_VENDOR} " found. ")
 endif(BLAS_FOUND)
 
 add_executable(neurad main.cpp)
