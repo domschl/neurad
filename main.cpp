@@ -4,6 +4,8 @@
 #include <math.h>
 #include <cmath>
 #include <vector>
+#include <set>
+#include <functional>
 
 using std::cout;
 using std::endl;
@@ -25,12 +27,18 @@ typedef int NRSize;
 NRFloat NaN = std::nan("0");
 #endif
 
+class NRMatrix;
+
 class NRMatrix {
   public:
     vector<NRFloat> mx;
     NRSize x;
     NRSize y;
     NRSize l;
+    std::string name = "";
+    std::string op = "";
+    std::set<NRMatrix *> children;
+    std::function<void()> backprop;
 
   private:
     NRSize i, ix, iy, ry, rx;
@@ -45,13 +53,13 @@ class NRMatrix {
         y = 0;
         l = 0;
     }
-    NRMatrix(NRSize y, NRSize x)
-        : y(y), x(x) {
+    NRMatrix(NRSize y, NRSize x, std::string name = "", std::string op = "")
+        : y(y), x(x), name(name), op(op) {
         l = x * y;
         mx = vector<NRFloat>(l);
     }
-    NRMatrix(NRSize y, NRSize x, vector<NRFloat> v)
-        : y(y), x(x) {
+    NRMatrix(NRSize y, NRSize x, vector<NRFloat> v, std::string name = "", std::string op = "")
+        : y(y), x(x), name(name), op(op) {
         l = x * y;
         if (v.size() == l)
             mx = v;
@@ -239,6 +247,17 @@ class NRMatrix {
         int lp;
         bool isint;
         bool issci;
+        bool use_pref = false;
+        std::string pref, spref;
+        NRSize prefline;
+        if (name != "") {
+            pref = name + " = ";
+            spref = "";
+            for (auto c : pref)
+                spref += " ";
+            use_pref = true;
+            prefline = y / 2;
+        }
         cout << std::fixed << std::setprecision(precision);
         mn = min();
         ma = max();
@@ -262,6 +281,12 @@ class NRMatrix {
             lp += (int)log10(ma) + 5;
         }
         for (yi = 0; yi < y; yi++) {
+            if (use_pref) {
+                if (yi == prefline)
+                    cout << pref;
+                else
+                    cout << spref;
+            }
             yr = yi * x;
             if (y == 1)
                 cout << "[";
@@ -302,13 +327,14 @@ std::ostream &operator<<(std::ostream &os, const NRMatrix &mat) {
 }
 
 int main(int, char **) {
-    NRMatrix t1 = NRMatrix(3, 2, {1, 2, 3, 4, 5, 6});
-    NRMatrix t2 = NRMatrix(2, 3, {1, 0, 1, 0, 1, 0});
+    NRMatrix t1 = NRMatrix(3, 2, (vector<NRFloat>){1, 2, 3, 4, 5, 6}, "t1");
+    NRMatrix t2 = NRMatrix(2, 3, (vector<NRFloat>){1, 0, 1, 0, 1, 0}, "t2");
     // t1.randInt(0, 1000000000);
     // t2.randInt(-100, 1000000000);
     //  t1.randNormal(0, 1e20);
     //  t2.randNormal(0, 1e20);
     cout << t1 << t2;
     NRMatrix t3 = t1 * t2;
+    t3.name = "t1*t2 = t3";
     cout << t3;
 }
