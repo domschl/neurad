@@ -33,7 +33,7 @@ class NRMatrix {
     NRSize l;
 
   private:
-    NRSize i, ix, iy, ry;
+    NRSize i, ix, iy, ry, rx;
 
   public:
     NRMatrix() {
@@ -45,6 +45,18 @@ class NRMatrix {
         : y(y), x(x) {
         l = x * y;
         mx = vector<NRFloat>(l);
+    }
+    NRMatrix(NRSize y, NRSize x, vector<NRFloat> v)
+        : y(y), x(x) {
+        l = x * y;
+        if (v.size() == l)
+            mx = v;
+        else {
+            mx = vector<NRFloat>(l);
+            l = std::min(v.size(), mx.size());
+            for (int i = 0; i < l; i++)
+                mx[i] = v[i];
+        }
     }
     ~NRMatrix() {
     }
@@ -110,6 +122,22 @@ class NRMatrix {
             }
         }
     }
+    void t() {
+        for (iy = 0; iy < y; iy++) {
+            ry = iy * x;
+            for (ix = 0; ix < x; ix++) {
+                if (iy != ix) {
+                    rx = ix * y;
+                    NRFloat s = mx[ry + ix];
+                    mx[ry + ix] = mx[rx + iy];
+                    mx[rx + iy] = s;
+                }
+            }
+        }
+        NRFloat sw = x;
+        x = y;
+        y = sw;
+    }
     void randNormal(NRFloat mean, NRFloat var) {
         std::random_device rd{};
         std::mt19937 gen{rd()};
@@ -156,27 +184,24 @@ class NRMatrix {
         }
         return std::move(s);
     }
-    void testmat() {
-        NRFloat A[4] = {1, 2, 3, 4};
-        NRFloat B[4] = {1, 0, 1, 0};
-        char TRANS = 'N';
-        int M = 2;
-        int N = 2;
-        int K = 2;
-        NRFloat ALPHA = 1.0;
-        int LDA = 2;
-        int LDB = 2;
-        NRFloat BETA = 0.0;
-        NRFloat C[4];
-        int LDC = 2;
-
-        sgemm_(&TRANS, &TRANS, &M, &N, &K, &ALPHA, A, &LDA, B, &LDB, &BETA, C, &LDC);
-
-        cout << C[0] << endl;
-        cout << C[1] << endl;
-        cout << C[2] << endl;
-        cout << C[3] << endl;
-        return;
+    NRMatrix operator*(NRMatrix &r) {
+        if (this->x != r.y) {
+            return std::move(NRMatrix(0, 0));
+        } else {
+            CBLAS_TRANSPOSE TRANSA = CblasNoTrans, TRANSB = CblasNoTrans;
+            int M = this->y;
+            int K = this->x;
+            int N = r.x;
+            int LDA = K;
+            int LDB = N;
+            int LDC = N;
+            float ALPHA = 1.0;
+            NRMatrix C(M, N);
+            C.zero();
+            float BETA = 0.0;
+            cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA, (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
+            return std::move(C);
+        }
     }
 
     NRFloat max() const {
@@ -278,14 +303,17 @@ std::ostream &operator<<(std::ostream &os, const NRMatrix &mat) {
 }
 
 int main(int, char **) {
-    NRMatrix t1 = NRMatrix(3, 3);
-    NRMatrix t2 = NRMatrix(3, 3);
-    t1.randInt(0, 1000000000);
-    t2.randInt(-100, 1000000000);
-    // t1.randNormal(0, 1e20);
-    // t2.randNormal(0, 1e20);
+    NRMatrix t1 = NRMatrix(2, 3, {1, 2, 3, 4, 5, 6});
+    NRMatrix t2 = NRMatrix(3, 2, {1, 0, 1, 0, 1, 0});
+    // t1.randInt(0, 1000000000);
+    // t2.randInt(-100, 1000000000);
+    //  t1.randNormal(0, 1e20);
+    //  t2.randNormal(0, 1e20);
     cout << t1 << t2;
-    NRMatrix t3 = t1 + t2;
+    // t1.t();
+    // t2.t();
+    // cout << t1 << t2;
+    NRMatrix t3 = t1 * t2;
     cout << t3;
     // delete t3;
     //  testmat();
