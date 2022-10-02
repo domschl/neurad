@@ -20,7 +20,8 @@ using std::vector;
 // try to fix CMakeList.txt, include_directories() directiv.
 #include <Accelerate/Accelerate.h>
 #else
-#error "Put your BLAS here"
+//  "Put your BLAS here"
+#include <cblas.h>
 #endif
 
 #ifdef USE_SINGLE_PRECISION_FLOAT
@@ -315,7 +316,7 @@ class NRMatrix {
 #else
         // cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
         //             (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, pa->y, pb->x, pa->x, 1.0, (NRFloat *)&(pa->mx[0]), pa->x,
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, pa->y, pb->x, pa->x, 1.0, (NRFloat *)&(pa->mx[0]), pa->x,
                     (NRFloat *)&(pb->mx[0]), pb->x, 0.0, (NRFloat *)&(pc->mx[0]), pb->x);
 #endif
         // C.children.push_back(NRMatrix(*this));
