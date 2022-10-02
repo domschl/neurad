@@ -495,6 +495,6 @@ int main(int, char **) {
     NRMatrix t10 = NRMatrix(&h, 3, 2, "t10", (vector<NRFloat>){1, 2, 3, 4, 5, 6});
     NRMatrix t11 = NRMatrix(&h, 2, 3, "t11", (vector<NRFloat>){1, 4, 1, 3, 1, 2});
     cout << t10 << t11;
-    NRMatrix t12 = t10 * t11;
+    NRMatrix t12 = (t10 * t11) * (t10 * t11);
     cout << t12;
 }
