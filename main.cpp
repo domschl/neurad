@@ -198,18 +198,10 @@ class NRMatrix {
   public:
     NRMatrixHeap *ph;
     NRMatrixCore *pm;
+    int defaultPrecision = 3;
     std::vector<NRMatrixCore *> children;
     std::function<void()> backprop;
 
-  private:
-    int defaultPrecision = 3;
-    NRSize i, ix, iy, ry, rx;
-    // A bit of FORTRAN-charm for BLAS:
-    int M, K, N, LDA, LDB, LDC;
-    NRFloat ALPHA = 1.0, BETA = 0.0;
-    CBLAS_TRANSPOSE TRANSA = CblasNoTrans, TRANSB = CblasNoTrans;
-
-  public:
     NRMatrix(NRMatrixHeap *ph)
         : ph(ph) {
         pm = ph->getP("null");
@@ -250,6 +242,10 @@ class NRMatrix {
     ~NRMatrix() {
     }
 
+  private:
+    NRSize ix, iy, rx, ry, i;  // don't always re-allocate
+
+  public:
     NRMatrixCore *matAdd(NRMatrix *pma, NRMatrix *pmb) {
         NRMatrixCore *pa = pma->pm;
         NRMatrixCore *pb = pmb->pm;
@@ -259,6 +255,7 @@ class NRMatrix {
             return ph->getP("null");
         }
         string name = "(" + pa->name + "+" + pb->name + ")";
+        // XXX: commutative case!
         if (ph->exists(name)) {
             cout << "INFO: Using cached version of " << name << endl;
             return ph->getP(name);
@@ -270,9 +267,9 @@ class NRMatrix {
                 pc->mx[ry + ix] = pa->mx[ry + ix] + pb->mx[ry + ix];
             }
         }
-        return ph->getP(name);
-        // s.children.push_back(NRMatrix(*this));
-        // s.children.push_back(NRMatrix(r));
+        return ph->getP(name);  // XXX redundant call
+        // s.children.push_back();
+        // s.children.push_back();
     }
 
     NRMatrix operator+(NRMatrix &r) {
@@ -289,62 +286,57 @@ class NRMatrix {
         // s.children.push_back(NRMatrix(r));
         return std::move(s);
     }
-    /*
-        //! this is the single part of any neural network implementation that has influence on performance:
-        //! matrix multiplication, everything else matters much, much less:
-        bool matMul(NRMatrix &a, NRMatrix &b, NRMatrix &c) {
-            if (a.x != b.y) {
-                std::cerr << "Invalid matrix mult: " << a->name << "*" << b.name << " " << a.x << "!=" << b.y << ", abort!" << endl;
-                return std::move(NRMatrix(0, 0, {}, "NaN"));
-            } else {
-                M = this->y;
-                K = this->x;
-                N = r.x;
-                LDA = K;
-                LDB = N;
-                LDC = N;
-                NRMatrix C(M, N);
-                C.zero();
-    #if defined(USE_SINGLE_PRECISION_FLOAT)
-                cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA,
-                            (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
-    #else
-                cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
-                            (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
-    #endif
-                C.name = "[" + this->name + "*" + r.name + "]";
-                C.children.push_back(NRMatrix(*this));
-                C.children.push_back(NRMatrix(r));
-                return std::move(C);
-            }
+
+    NRMatrixCore *matMul(NRMatrix *pma, NRMatrix *pmb) {
+        NRMatrixCore *pa = pma->pm;
+        NRMatrixCore *pb = pmb->pm;
+        NRMatrixCore *pc;
+        if (pa->x != pb->y) {
+            std::cerr << "Invalid matrix mult: " << pa->name << '+' << pb->name << " " << pa->x << "," << pa->y << "<->" << pb->x << "," << pb->y << pa->x << "!=" << pb->y << " -> abort!" << endl;
+            return ph->getP("null");
         }
-        NRMatrix operator*(NRMatrix &r) {
-            if (this->x != r.y) {
-                std::cerr << "Invalid matrix mult: " << this->name << "*" << r.name << " " << this->x << "!=" << r.y << ", abort!" << endl;
-                return std::move(NRMatrix(0, 0, {}, "NaN"));
-            } else {
-                M = this->y;
-                K = this->x;
-                N = r.x;
-                LDA = K;
-                LDB = N;
-                LDC = N;
-                NRMatrix C(M, N);
-                C.zero();
-    #if defined(USE_SINGLE_PRECISION_FLOAT)
-                cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA,
-                            (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
-    #else
-                cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
-                            (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
-    #endif
-                C.name = "[" + this->name + "*" + r.name + "]";
-                C.children.push_back(NRMatrix(*this));
-                C.children.push_back(NRMatrix(r));
-                return std::move(C);
-            }
+        string name = "(" + pa->name + "*" + pb->name + ")";
+        // XXX: commutative case!
+        if (ph->exists(name)) {
+            cout << "INFO: Using cached version of " << name << endl;
+            return ph->getP(name);
         }
-    */
+        pc = ph->add(pa->y, pb->x, name);
+#if defined(USE_SINGLE_PRECISION_FLOAT)
+        // A bit of FORTRAN-charm for BLAS:
+        // int M, K, N, LDA, LDB, LDC;
+        // NRFloat ALPHA = 1.0, BETA = 0.0;
+        // CBLAS_TRANSPOSE TRANSA = CblasNoTrans, TRANSB = CblasNoTrans;
+        // M = this->y; K = this->x; N = r.x; LDA = K; LDB = N; LDC = N;
+        // cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA,
+        //            (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, pa->y, pb->x, pa->x, 1.0, (NRFloat *)&(pa->mx[0]), pa->x,
+                    (NRFloat *)&(pb->mx[0]), pb->x, 0.0, (NRFloat *)&(pc->mx[0]), pb->x);
+#else
+        // cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
+        //             (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, pa->y, pb->x, pa->x, 1.0, (NRFloat *)&(pa->mx[0]), pa->x,
+                    (NRFloat *)&(pb->mx[0]), pb->x, 0.0, (NRFloat *)&(pc->mx[0]), pb->x);
+#endif
+        // C.children.push_back(NRMatrix(*this));
+        // C.children.push_back(NRMatrix(r));
+        return ph->getP(name);  // XXX redundant call
+    }
+    NRMatrix operator*(NRMatrix &r) {
+        NRMatrixCore *pmc = matMul(this, &r);
+        NRMatrix s = NRMatrix(ph, pmc);
+        // s.children.push_back(NRMatrix(*this));
+        // s.children.push_back(NRMatrix(r));
+        return std::move(s);
+    }
+    NRMatrix operator*(NRMatrix &&r) {
+        NRMatrixCore *pmc = matMul(this, &r);
+        NRMatrix s = NRMatrix(ph, pmc);
+        // s.children.push_back(NRMatrix(*this));
+        // s.children.push_back(NRMatrix(r));
+        return std::move(s);
+    }
+
     NRFloat max() const {
         if (pm->l == 0) return NaN;
         NRFloat m = pm->mx[0];
@@ -493,10 +485,16 @@ int main(int, char **) {
     NRMatrix t2 = NRMatrix(&h, 3, 2, "t2", (vector<NRFloat>){1, 4, 1, 3, 1, 2});
 
     cout << t1 << t2;
-    NRMatrix t3 = t1 + t2;
+    NRMatrix t3 = (t1 + t2) + (t1 + t2);
     cout << t3;
-    NRMatrix t4 = t1 + t2;
+    NRMatrix t4 = t1 + t2 + t3;
     cout << t4;
     NRMatrix t5 = t3 + t4;
     cout << t5;
+
+    NRMatrix t10 = NRMatrix(&h, 3, 2, "t10", (vector<NRFloat>){1, 2, 3, 4, 5, 6});
+    NRMatrix t11 = NRMatrix(&h, 2, 3, "t11", (vector<NRFloat>){1, 4, 1, 3, 1, 2});
+    cout << t10 << t11;
+    NRMatrix t12 = t10 * t11;
+    cout << t12;
 }
