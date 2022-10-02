@@ -5,13 +5,19 @@
 #include <cmath>
 #include <vector>
 #include <set>
+#include <map>
 #include <functional>
 
 using std::cout;
 using std::endl;
+using std::map;
+using std::string;
 using std::vector;
 
 #ifdef __APPLE__
+// Apple's include directories are a somewhat unusual.
+// If this or dependencies like cblas.h aren't found by language servers,
+// try to fix CMakeList.txt, include_directories() directiv.
 #include <Accelerate/Accelerate.h>
 #else
 #error "Put your BLAS here"
@@ -27,105 +33,54 @@ typedef int NRSize;
 NRFloat NaN = std::nan("0");
 #endif
 
-class NRMatrix;
-
-class NRMatrix {
-  public:
+struct NRMatrixCore {
     vector<NRFloat> mx;
     vector<NRFloat> grad;
     NRSize x;
     NRSize y;
     NRSize l;
     std::string name = "";
-    std::vector<NRMatrix> children;
-    std::function<void()> backprop;
+    vector<NRMatrixCore *> pDeps;
+    bool bValid = false;
 
   private:
-    int defaultPrecision = 3;
-    NRSize i, ix, iy, ry, rx;
-    // A bit of FORTRAN-charm for BLAS:
-    int M, K, N, LDA, LDB, LDC;
-    NRFloat ALPHA = 1.0, BETA = 0.0;
-    CBLAS_TRANSPOSE TRANSA = CblasNoTrans, TRANSB = CblasNoTrans;
+    NRSize i, ix, iy, rx, ry;
 
   public:
-    NRMatrix() {
+    NRMatrixCore() {
+        mx = {};
+        grad = {};
         x = 0;
         y = 0;
         l = 0;
-        name = "";
+        name = "null";
+        bValid = false;
     }
-    NRMatrix(NRSize y, NRSize x, std::string name = "")
+    NRMatrixCore(NRSize y, NRSize x, string name)
         : y(y), x(x), name(name) {
         l = x * y;
         mx = vector<NRFloat>(l);
         grad = mx;
+        bValid = true;
         zeroGrad();
     }
-    NRMatrix(NRSize y, NRSize x, vector<NRFloat> v, std::string name = "")
+    NRMatrixCore(NRSize y, NRSize x, string name, vector<NRFloat> v)
         : y(y), x(x), name(name) {
         l = x * y;
         if (v.size() == l)
             mx = v;
         else {
+            cout << "ERROR: incompatible length of initializing vector for matrix " << name << ", partial init!" << endl;
             mx = vector<NRFloat>(l);
             l = std::min(v.size(), mx.size());
-            for (int i = 0; i < l; i++)
+            for (int i = 0; i < l; i++) {
                 mx[i] = v[i];
+            }
         }
         grad = mx;
+        bValid = true;
         zeroGrad();
     }
-    ~NRMatrix() {
-    }
-    /* We get all this for free, since using std::vector:
-    //! Copy
-    NRMatrix(const NRMatrix &source_matrix)
-        : x(source_matrix.x), y(source_matrix.y), l(source_matrix.l), mx(source_matrix.mx) {
-    }
-    // Assignment copy
-    NRMatrix &operator=(const NRMatrix &source_matrix) {
-        if (this != &source_matrix) {
-            x = source_matrix.x;
-            y = source_matrix.y;
-            l = source_matrix.l;
-            mx = source_matrix.mx;
-        }
-        return *this;
-    }
-
-    // Move constructor.
-    NRMatrix(NRMatrix &&source_matrix) noexcept
-        : mx({}), l(0), x(0), y(0) {
-        x = source_matrix.x;
-        y = source_matrix.y;
-        l = source_matrix.l;
-        mx = source_matrix.mx;
-
-        source_matrix.x = 0;
-        source_matrix.y = 0;
-        source_matrix.l = 0;
-        source_matrix.mx = {};
-    }
-
-    // Move assignment operator.
-    NRMatrix &operator=(NRMatrix &&source_matrix) noexcept {
-        if (this != &source_matrix) {
-            // Free the existing resource.
-            // delete[] mx;
-            x = source_matrix.x;
-            y = source_matrix.y;
-            l = source_matrix.l;
-            mx = source_matrix.mx;
-
-            source_matrix.x = 0;
-            source_matrix.y = 0;
-            source_matrix.l = 0;
-            source_matrix.mx = {};
-        }
-        return *this;
-    }
-    */
     void zero() {
         for (NRSize i = 0; i < l; i++) {
             mx[i] = 0.0;
@@ -133,8 +88,9 @@ class NRMatrix {
         }
     }
     void zeroGrad() {
-        for (NRSize i = 0; i < l; i++)
+        for (NRSize i = 0; i < l; i++) {
             grad[i] = 0.0;
+        }
     }
     void unit() {
         for (iy = 0; iy < y; iy++) {
@@ -188,80 +144,232 @@ class NRMatrix {
     void set(NRSize yi, NRSize xi, NRFloat v) {
         mx[yi * x + xi] = v;
     }
-    NRMatrix operator+(NRMatrix &r) {
-        NRMatrix s;
-        if (this->x != r.x || this->y != r.y) {
-            std::cerr << "Invalid matrix add: " << this->name << '+' << r.name << " " << this->x << "," << this->y << "!=" << r.x << "," << r.y << "abort!" << endl;
-            s = NRMatrix(0, 0, {}, "NaN");
-        } else {
-            s = NRMatrix(this->y, this->x);
-            for (iy = 0; iy < this->y; iy++) {
-                ry = iy * r.x;
-                for (ix = 0; ix < this->x; ix++) {
-                    s.mx[ry + ix] = this->mx[ry + ix] + r.mx[ry + ix];
-                }
-            }
-        }
-        s.name = "(" + this->name + "+" + r.name + ")";
-        s.children.push_back(NRMatrix(*this));
-        s.children.push_back(NRMatrix(r));
-        return std::move(s);
+};
+
+class NRMatrixHeap {
+  public:
+    map<string, NRMatrixCore> h;
+    NRMatrixHeap() {
+        h["null"] = NRMatrixCore();
     }
-    //! this is the single part of any neural network implementation that has influence on performance:
-    //! matrix multiplication, everything else matters much, much less:
-    NRMatrix operator*(NRMatrix &r) {
-        if (this->x != r.y) {
-            std::cerr << "Invalid matrix mult: " << this->name << "*" << r.name << " " << this->x << "!=" << r.y << ", abort!" << endl;
-            return std::move(NRMatrix(0, 0, {}, "NaN"));
-        } else {
-            M = this->y;
-            K = this->x;
-            N = r.x;
-            LDA = K;
-            LDB = N;
-            LDC = N;
-            NRMatrix C(M, N);
-            C.zero();
-#if defined(USE_SINGLE_PRECISION_FLOAT)
-            cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA,
-                        (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
-#else
-            cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
-                        (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
-#endif
-            C.name = "[" + this->name + "*" + r.name + "]";
-            std::cerr << "Cor? " << C.name << endl;
-            C.children.push_back(NRMatrix(*this));
-            C.children.push_back(NRMatrix(r));
-            return std::move(C);
+    ~NRMatrixHeap() {
+    }
+    bool exists(string name) {
+        auto srch = h.find(name);
+        if (srch == h.end()) return false;
+        return true;
+    }
+    bool isCompatible(string name, NRSize y, NRSize x) {
+        NRMatrixCore *pmc = getP(name);
+        if (pmc == nullptr) return false;
+        if (pmc->y == y && pmc->x == x) return true;
+        return false;
+    }
+    NRMatrixCore *getP(string name) {
+        auto srch = h.find(name);
+        if (srch == h.end()) return (NRMatrixCore *)nullptr;
+        return &(h[name]);
+    }
+    NRMatrixCore *add(NRSize y, NRSize x, string name) {
+        if (exists(name)) {
+            cout << "FATAL: tried to add existing matrix " << name << " ignored." << endl;
+            return nullptr;
         }
+        h[name] = NRMatrixCore(y, x, name);
+        return getP(name);
+    }
+    NRMatrixCore *add(NRSize y, NRSize x, string name, vector<NRFloat> v) {
+        if (exists(name)) {
+            cout << "FATAL: tried to add existing matrix " << name << " ignored." << endl;
+            return nullptr;
+        }
+        h[name] = NRMatrixCore(y, x, name, v);
+        return getP(name);
+    }
+    bool erase(string name) {
+        auto srch = h.find(name);
+        if (srch == h.end()) return false;
+        h.erase(srch);
+        return true;
+    }
+};
+
+class NRMatrix {
+  public:
+    NRMatrixHeap *ph;
+    NRMatrixCore *pm;
+    std::vector<NRMatrixCore *> children;
+    std::function<void()> backprop;
+
+  private:
+    int defaultPrecision = 3;
+    NRSize i, ix, iy, ry, rx;
+    // A bit of FORTRAN-charm for BLAS:
+    int M, K, N, LDA, LDB, LDC;
+    NRFloat ALPHA = 1.0, BETA = 0.0;
+    CBLAS_TRANSPOSE TRANSA = CblasNoTrans, TRANSB = CblasNoTrans;
+
+  public:
+    NRMatrix(NRMatrixHeap *ph)
+        : ph(ph) {
+        pm = ph->getP("null");
+    }
+    NRMatrix(NRMatrixHeap *ph, NRMatrixCore *pmc)
+        : ph(ph), pm(pmc) {
+    }
+    NRMatrix(NRMatrixHeap *ph, NRSize y, NRSize x, std::string name)
+        : ph(ph) {
+        if (ph->exists(name)) {
+            if (ph->isCompatible(name, y, x)) {
+                pm = ph->getP(name);
+                cout << "INFO: recycling existing matrix " << name << endl;
+                return;
+            } else {
+                cout << "FATAL: tried to recreate existing matrix " << name << " with different size, ignored!" << endl;
+                return;
+            }
+        } else {
+            pm = ph->add(y, x, name);
+        }
+    }
+    NRMatrix(NRMatrixHeap *ph, NRSize y, NRSize x, string name, vector<NRFloat> v)
+        : ph(ph) {
+        if (ph->exists(name)) {
+            if (ph->isCompatible(name, y, x)) {
+                pm = ph->getP(name);
+                cout << "INFO: recycling existing matrix " << name << endl;
+                return;
+            } else {
+                cout << "FATAL: tried to recreate existing matrix " << name << " with different size, ignored!" << endl;
+                return;
+            }
+        } else {
+            pm = ph->add(y, x, name, v);
+        }
+    }
+    ~NRMatrix() {
     }
 
+    NRMatrixCore *matAdd(NRMatrix *pma, NRMatrix *pmb) {
+        NRMatrixCore *pa = pma->pm;
+        NRMatrixCore *pb = pmb->pm;
+        NRMatrixCore *pc;
+        if (pa->x != pb->x || pa->y != pb->y) {
+            std::cerr << "Invalid matrix add: " << pa->name << '+' << pb->name << " " << pa->x << "," << pa->y << "!=" << pb->x << "," << pb->y << " -> abort!" << endl;
+            return ph->getP("null");
+        }
+        string name = "(" + pa->name + "+" + pb->name + ")";
+        if (ph->exists(name)) {
+            cout << "INFO: Using cached version of " << name << endl;
+            return ph->getP(name);
+        }
+        pc = ph->add(pa->y, pa->x, name);
+        for (iy = 0; iy < pa->y; iy++) {
+            ry = iy * pa->x;
+            for (ix = 0; ix < pa->x; ix++) {
+                pc->mx[ry + ix] = pa->mx[ry + ix] + pb->mx[ry + ix];
+            }
+        }
+        return ph->getP(name);
+        // s.children.push_back(NRMatrix(*this));
+        // s.children.push_back(NRMatrix(r));
+    }
+
+    NRMatrix operator+(NRMatrix &r) {
+        NRMatrixCore *pmc = matAdd(this, &r);
+        NRMatrix s = NRMatrix(ph, pmc);
+        // s.children.push_back(NRMatrix(*this));
+        // s.children.push_back(NRMatrix(r));
+        return std::move(s);
+    }
+    NRMatrix operator+(NRMatrix &&r) {
+        NRMatrixCore *pmc = matAdd(this, &r);
+        NRMatrix s = NRMatrix(ph, pmc);
+        // s.children.push_back(NRMatrix(*this));
+        // s.children.push_back(NRMatrix(r));
+        return std::move(s);
+    }
+    /*
+        //! this is the single part of any neural network implementation that has influence on performance:
+        //! matrix multiplication, everything else matters much, much less:
+        bool matMul(NRMatrix &a, NRMatrix &b, NRMatrix &c) {
+            if (a.x != b.y) {
+                std::cerr << "Invalid matrix mult: " << a->name << "*" << b.name << " " << a.x << "!=" << b.y << ", abort!" << endl;
+                return std::move(NRMatrix(0, 0, {}, "NaN"));
+            } else {
+                M = this->y;
+                K = this->x;
+                N = r.x;
+                LDA = K;
+                LDB = N;
+                LDC = N;
+                NRMatrix C(M, N);
+                C.zero();
+    #if defined(USE_SINGLE_PRECISION_FLOAT)
+                cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA,
+                            (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
+    #else
+                cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
+                            (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
+    #endif
+                C.name = "[" + this->name + "*" + r.name + "]";
+                C.children.push_back(NRMatrix(*this));
+                C.children.push_back(NRMatrix(r));
+                return std::move(C);
+            }
+        }
+        NRMatrix operator*(NRMatrix &r) {
+            if (this->x != r.y) {
+                std::cerr << "Invalid matrix mult: " << this->name << "*" << r.name << " " << this->x << "!=" << r.y << ", abort!" << endl;
+                return std::move(NRMatrix(0, 0, {}, "NaN"));
+            } else {
+                M = this->y;
+                K = this->x;
+                N = r.x;
+                LDA = K;
+                LDB = N;
+                LDC = N;
+                NRMatrix C(M, N);
+                C.zero();
+    #if defined(USE_SINGLE_PRECISION_FLOAT)
+                cblas_sgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (float *)&(this->mx[0]), LDA,
+                            (float *)&(r.mx[0]), LDB, BETA, (float *)&(C.mx[0]), LDC);
+    #else
+                cblas_dgemm(CblasRowMajor, TRANSA, TRANSB, M, N, K, ALPHA, (double *)&(this->mx[0]), LDA,
+                            (double *)&(r.mx[0]), LDB, BETA, (double *)&(C.mx[0]), LDC);
+    #endif
+                C.name = "[" + this->name + "*" + r.name + "]";
+                C.children.push_back(NRMatrix(*this));
+                C.children.push_back(NRMatrix(r));
+                return std::move(C);
+            }
+        }
+    */
     NRFloat max() const {
-        if (l == 0) return NaN;
-        NRFloat m = mx[0];
-        for (NRSize i = 1; i < l; i++)
-            if (mx[i] > m) m = mx[i];
+        if (pm->l == 0) return NaN;
+        NRFloat m = pm->mx[0];
+        for (NRSize i = 1; i < pm->l; i++)
+            if (pm->mx[i] > m) m = pm->mx[i];
         return m;
     }
     NRFloat min() const {
-        if (l == 0) return NaN;
-        NRFloat m = mx[0];
-        for (NRSize i = 1; i < l; i++)
-            if (mx[i] < m) m = mx[i];
+        if (pm->l == 0) return NaN;
+        NRFloat m = pm->mx[0];
+        for (NRSize i = 1; i < pm->l; i++)
+            if (pm->mx[i] < m) m = pm->mx[i];
         return m;
     }
     bool isInt() const {
-        if (l == 0) return false;
-        for (NRSize i = 0; i < l; i++) {
-            if ((NRFloat)(int)mx[i] != mx[i]) return false;
+        if (pm->l == 0) return false;
+        for (NRSize i = 0; i < pm->l; i++) {
+            if ((NRFloat)(int)pm->mx[i] != pm->mx[i]) return false;
         }
         return true;
     }
     bool isPos() const {
-        if (l == 0) return false;
-        for (NRSize i = 0; i < l; i++) {
-            if (mx[i] < 0.0) return false;
+        if (pm->l == 0) return false;
+        for (NRSize i = 0; i < pm->l; i++) {
+            if (pm->mx[i] < 0.0) return false;
         }
         return true;
     }
@@ -284,13 +392,13 @@ class NRMatrix {
         if (precision == -1) precision = getDefaultPrecision();
         std::string pref, spref;
         NRSize prefline;
-        if (name != "") {
-            pref = name + " = ";
+        if (pm->name != "") {
+            pref = pm->name + " = ";
             spref = "";
             for (auto c : pref)
                 spref += " ";
             use_pref = true;
-            prefline = y / 2;
+            prefline = pm->y / 2;
         }
         cout << std::fixed << std::setprecision(precision);
         mn = min();
@@ -314,38 +422,38 @@ class NRMatrix {
             issci = false;
             lp += (int)log10(ma) + 5;
         }
-        for (yi = 0; yi < y; yi++) {
+        for (yi = 0; yi < pm->y; yi++) {
             if (use_pref) {
                 if (yi == prefline)
                     cout << pref;
                 else
                     cout << spref;
             }
-            yr = yi * x;
-            if (y == 1)
+            yr = yi * pm->x;
+            if (pm->y == 1)
                 cout << "[";
             else {
                 if (yi == 0)
                     cout << "⎛";
-                else if (yi > 0 && yi < y - 1)
+                else if (yi > 0 && yi < pm->y - 1)
                     cout << "⎜";
                 else
                     cout << "⎝";
             }
-            for (xi = 0; xi < x; xi++) {
+            for (xi = 0; xi < pm->x; xi++) {
                 cout << std::setw(lp);
                 if (isint && !issci)
-                    cout << (int)(mx[yr + xi]);
+                    cout << (int)(pm->mx[yr + xi]);
                 else
-                    cout << mx[yr + xi];
-                if (xi < x - 1) cout << " ";
+                    cout << pm->mx[yr + xi];
+                if (xi < pm->x - 1) cout << " ";
             }
-            if (y == 1)
+            if (pm->y == 1)
                 cout << "]";
             else {
                 if (yi == 0)
                     cout << "⎞";
-                else if (yi > 0 && yi < y - 1)
+                else if (yi > 0 && yi < pm->y - 1)
                     cout << "⎟";
                 else
                     cout << "⎠";
@@ -355,11 +463,11 @@ class NRMatrix {
     }
     void family(int gen = 0) {
         if (gen == 0) cout << "Family:" << endl;
-        cout << "gen " << gen + 1 << endl;
+        // cout << "gen " << gen + 1 << endl;
         for (int i = 0; i < gen; i++)
             cout << "  ";
-        cout << name;
-        if (l == 0) {
+        cout << pm->name;
+        if (pm->l == 0) {
             cout << " = INVALID MATRIX, abort!" << endl;
             return;
         }
@@ -368,9 +476,9 @@ class NRMatrix {
             return;
         }
         cout << endl;
-        for (NRMatrix child : children) {
-            child.family(gen + 1);
-        }
+        // for (NRMatrix child : children) {
+        //     child.family(gen + 1);
+        // }
     }
 };
 
@@ -380,39 +488,15 @@ std::ostream &operator<<(std::ostream &os, const NRMatrix &mat) {
 }
 
 int main(int, char **) {
-    /*
-    NRMatrix t1 = NRMatrix(3, 2, (vector<NRFloat>){1, 2, 3, 4, 5, 6}, "t1");
-    NRMatrix t2 = NRMatrix(3, 2, (vector<NRFloat>){1, 4, 1, 3, 1, 2}, "t2");
-    */
-    NRMatrix t3 = NRMatrix(2, 2, (vector<NRFloat>){1, 0, 1, 2}, "t3");
-    // cout << t1 << t2 << t3;
-    // NRMatrix t4 = t1 + t2 + t2 + t1;
-    // t4.name = "t4=t1+t2";
-    // cout << t4;
-    // NRMatrix t5 = t4 * t3;
-    NRMatrix t33 = t3 * t3 * t3;
-    NRMatrix t34 = t33 * t33 * t33;
-    cout << t34 << endl;
-    /*
-    NRMatrix t6 = t2 * t33 + t5 + t5;
-    t6.t();
-    NRMatrix t7 = t5 * t6;
-    cout << t7;
-    */
-    t34.family();
-    // Output (int example):
-    //       ⎛1 2⎞
-    //  t1 = ⎜3 4⎟
-    //       ⎝5 6⎠
-    //       ⎛1 4⎞
-    //  t2 = ⎜1 3⎟
-    //       ⎝1 2⎠
-    //       ⎛1 0 1⎞
-    //  t3 = ⎝0 1 0⎠
-    //            ⎛2 6⎞
-    //  (t1+t2) = ⎜4 7⎟
-    //            ⎝6 8⎠
-    //                 ⎛2 6 2⎞
-    //  ((t1+t2)*t3) = ⎜4 7 4⎟
-    //                 ⎝6 8 6⎠
+    NRMatrixHeap h;
+    NRMatrix t1 = NRMatrix(&h, 3, 2, "t1", (vector<NRFloat>){1, 2, 3, 4, 5, 6});
+    NRMatrix t2 = NRMatrix(&h, 3, 2, "t2", (vector<NRFloat>){1, 4, 1, 3, 1, 2});
+
+    cout << t1 << t2;
+    NRMatrix t3 = t1 + t2;
+    cout << t3;
+    NRMatrix t4 = t1 + t2;
+    cout << t4;
+    NRMatrix t5 = t3 + t4;
+    cout << t5;
 }

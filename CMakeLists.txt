@@ -19,9 +19,8 @@ endif()
 
 if(APPLE)
     message(STATUS "Apple platform")
-
-    # include_directories("/usr/local/include")
-    # include_directories("/opt/homebrew/include")
+    include_directories("/usr/local/include")
+    include_directories("/opt/homebrew/include")
     SET(BLA_VENDOR "Apple" CACHE STRING "Set BLAS vendor (see FindBLAS) e.g. OpenBlas, Apple, Generic")
 else()
     SET(BLA_VENDOR "" CACHE STRING "Set BLAS vendor (see FindBLAS) e.g. OpenBlas, Apple, Generic")
@@ -30,9 +29,13 @@ endif()
 find_package(BLAS REQUIRED)
 
 if(BLAS_FOUND)
-    include_directories(${BLAS_INCLUDE_DIRS})
+    if(APPLE)
+        # That looks well organised:
+        include_directories("/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/Headers/")
+    endif(APPLE)
+
     link_directories(${BLAS_LINK_DIRS})
-    message(STATUS "BLAS " ${BLA_VENDOR} " found. ")
+    message(STATUS "BLAS " ${BLA_VENDOR} " found, INC:" ${BLAS_INCLUDE_DIRS})
 endif(BLAS_FOUND)
 
 add_executable(neurad main.cpp)
