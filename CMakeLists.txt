@@ -23,29 +23,32 @@ if(APPLE)
     include_directories("/opt/homebrew/include")
     SET(BLA_VENDOR "Apple" CACHE STRING "Set BLAS vendor (see FindBLAS) e.g. OpenBLAS, Apple, Generic")
 else()
-  SET(BLA_VENDOR "OpenBLAS" CACHE STRING "Set BLAS vendor (see FindBLAS) e.g. OpenBLAS, Apple, Generic")
-  SET(CMAKE_C_FLAGS -fopenmp)
+    SET(BLA_VENDOR "OpenBLAS" CACHE STRING "Set BLAS vendor (see FindBLAS) e.g. OpenBLAS, Apple, Generic")
+    SET(CMAKE_C_FLAGS -fopenmp)
 endif()
 
 find_package(BLAS REQUIRED)
 
 if(BLAS_FOUND)
     if(APPLE)
-        # That looks well organised:
+        # That looks well organised: (used for editor code completion)
         include_directories("/Library/Developer/CommandLineTools/SDKs/MacOSX13.0.sdk/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/Headers/")
         link_directories(${BLAS_LIBRARIES})
     else()
         link_directories(${BLAS_LIBRARIES})
     endif(APPLE)
+
     message(STATUS "BLAS " ${BLA_VENDOR} " found")
 endif(BLAS_FOUND)
 
 add_executable(neurad main.cpp)
+
 if(APPLE)
-target_link_libraries(neurad LINK_PUBLIC ${BLAS_LIBRARIES})
+    target_link_libraries(neurad LINK_PUBLIC ${BLAS_LIBRARIES})
 else()
-target_link_libraries(neurad LINK_PUBLIC ${BLAS_LIBRARIES} cblas)
+    target_link_libraries(neurad LINK_PUBLIC ${BLAS_LIBRARIES} cblas)
 endif()
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)

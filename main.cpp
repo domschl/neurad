@@ -41,7 +41,7 @@ struct NRMatrixCore {
     NRSize y;
     NRSize l;
     std::string name = "";
-    vector<NRMatrixCore *> pDeps;
+    vector<NRMatrixCore *> children;
     bool bValid = false;
 
   private:
@@ -57,16 +57,16 @@ struct NRMatrixCore {
         name = "null";
         bValid = false;
     }
-    NRMatrixCore(NRSize y, NRSize x, string name)
-        : y(y), x(x), name(name) {
+    NRMatrixCore(NRSize y, NRSize x, string name, vector<NRMatrixCore *> children = {})
+        : y(y), x(x), name(name), children(children) {
         l = x * y;
         mx = vector<NRFloat>(l);
         grad = mx;
         bValid = true;
         zeroGrad();
     }
-    NRMatrixCore(NRSize y, NRSize x, string name, vector<NRFloat> v)
-        : y(y), x(x), name(name) {
+    NRMatrixCore(NRSize y, NRSize x, string name, vector<NRFloat> v, vector<NRMatrixCore *> children)
+        : y(y), x(x), name(name), children(children) {
         l = x * y;
         if (v.size() == l)
             mx = v;
@@ -171,20 +171,20 @@ class NRMatrixHeap {
         if (srch == h.end()) return (NRMatrixCore *)nullptr;
         return &(h[name]);
     }
-    NRMatrixCore *add(NRSize y, NRSize x, string name) {
+    NRMatrixCore *add(NRSize y, NRSize x, string name, vector<NRMatrixCore *> children = {}) {
         if (exists(name)) {
             cout << "FATAL: tried to add existing matrix " << name << " ignored." << endl;
             return nullptr;
         }
-        h[name] = NRMatrixCore(y, x, name);
+        h[name] = NRMatrixCore(y, x, name, children);
         return getP(name);
     }
-    NRMatrixCore *add(NRSize y, NRSize x, string name, vector<NRFloat> v) {
+    NRMatrixCore *add(NRSize y, NRSize x, string name, vector<NRFloat> v, vector<NRMatrixCore *> children = {}) {
         if (exists(name)) {
             cout << "FATAL: tried to add existing matrix " << name << " ignored." << endl;
             return nullptr;
         }
-        h[name] = NRMatrixCore(y, x, name, v);
+        h[name] = NRMatrixCore(y, x, name, v, children);
         return getP(name);
     }
     bool erase(string name) {
@@ -261,7 +261,7 @@ class NRMatrix {
             cout << "INFO: Using cached version of " << name << endl;
             return ph->getP(name);
         }
-        pc = ph->add(pa->y, pa->x, name);
+        pc = ph->add(pa->y, pa->x, name, {pa, pb});
         for (iy = 0; iy < pa->y; iy++) {
             ry = iy * pa->x;
             for (ix = 0; ix < pa->x; ix++) {
@@ -302,7 +302,7 @@ class NRMatrix {
             cout << "INFO: Using cached version of " << name << endl;
             return ph->getP(name);
         }
-        pc = ph->add(pa->y, pb->x, name);
+        pc = ph->add(pa->y, pb->x, name, {pa, pb});
 #if defined(USE_SINGLE_PRECISION_FLOAT)
         // A bit of FORTRAN-charm for BLAS:
         // int M, K, N, LDA, LDB, LDC;
