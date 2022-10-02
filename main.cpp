@@ -261,7 +261,7 @@ class NRMatrix {
             cout << "INFO: Using cached version of " << name << endl;
             return ph->getP(name);
         }
-        pc = ph->add(pa->y, pa->x, name, {pa, pb});
+        pc = ph->add(pa->y, pa->x, name, (vector<NRMatrixCore *>){pa, pb});
         for (iy = 0; iy < pa->y; iy++) {
             ry = iy * pa->x;
             for (ix = 0; ix < pa->x; ix++) {
@@ -302,7 +302,7 @@ class NRMatrix {
             cout << "INFO: Using cached version of " << name << endl;
             return ph->getP(name);
         }
-        pc = ph->add(pa->y, pb->x, name, {pa, pb});
+        pc = ph->add(pa->y, pb->x, name, (vector<NRMatrixCore *>){pa, pb});
 #if defined(USE_SINGLE_PRECISION_FLOAT)
         // A bit of FORTRAN-charm for BLAS:
         // int M, K, N, LDA, LDB, LDC;
