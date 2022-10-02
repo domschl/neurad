@@ -200,7 +200,6 @@ class NRMatrix {
     NRMatrixHeap *ph;
     NRMatrixCore *pm;
     int defaultPrecision = 3;
-    std::vector<NRMatrixCore *> children;
     std::function<void()> backprop;
 
     NRMatrix(NRMatrixHeap *ph)
@@ -454,24 +453,27 @@ class NRMatrix {
             cout << endl;
         }
     }
-    void family(int gen = 0) {
+    void family() {
+        MFamily(pm, 0);
+    }
+
+    void MFamily(NRMatrixCore *p, int gen) {
         if (gen == 0) cout << "Family:" << endl;
-        // cout << "gen " << gen + 1 << endl;
         for (int i = 0; i < gen; i++)
             cout << "  ";
-        cout << pm->name;
-        if (pm->l == 0) {
+        cout << p->name;
+        if (p->l == 0) {
             cout << " = INVALID MATRIX, abort!" << endl;
             return;
         }
-        if (children.size() == 0) {
+        if (p->children.size() == 0) {
             cout << "]" << endl;
             return;
         }
         cout << endl;
-        // for (NRMatrix child : children) {
-        //     child.family(gen + 1);
-        // }
+        for (NRMatrixCore *child : p->children) {
+            MFamily(child, gen + 1);
+        }
     }
 };
 
@@ -498,6 +500,8 @@ int main(int, char **) {
     cout << t10 << t11;
     NRMatrix t12 = (t10 * t11) * (t10 * t11);
     cout << t12;
+
+    t12.family();
 }
 
 // Test-output:
