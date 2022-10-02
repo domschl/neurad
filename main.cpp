@@ -442,7 +442,7 @@ class NRMatrix {
             lp += 9;
         } else {
             issci = false;
-            lp += (int)log10(ma) + 5;
+            lp += (int)log10(ma) + precision + 3;
         }
         for (yi = 0; yi < pm->y; yi++) {
             if (yi > 6 && yi < pm->y - 6 && (yi != prefline || !use_pref)) {
@@ -555,6 +555,13 @@ int main(int, char **) {
     cout << tt3;
 
     tt3.family();
+
+    NRMatrix m = NRMatrix(&h, 1024, 1024, "m");
+    NRMatrix n = NRMatrix(&h, 1024, 1024, "n");
+    m.pm->randNormal(0, 1);
+    n.pm->randNormal(0, 1);
+    auto o = m * n;
+    cout << m << n << o;
 }
 
 // Test-output:
