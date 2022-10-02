@@ -445,42 +445,55 @@ class NRMatrix {
             lp += (int)log10(ma) + 5;
         }
         for (yi = 0; yi < pm->y; yi++) {
-            if (use_pref) {
-                if (yi == prefline)
-                    cout << pref;
-                else
-                    cout << spref;
+            if (yi > 6 && yi < pm->y - 6 && (yi != prefline || !use_pref)) {
+                if (use_pref) {
+                    if (yi == prefline - 1) cout << spref << "   ..." << endl;
+                    if (yi == prefline + 1) cout << spref << "   ..." << endl;
+                } else {
+                    if (yi == pm->y / 2) cout << "..." << endl;
+                }
+            } else {
+                if (use_pref) {
+                    if (yi == prefline)
+                        cout << pref;
+                    else
+                        cout << spref;
+                }
+                yr = yi * pm->x;
+                if (pm->y == 1)
+                    cout << "[";
+                else {
+                    if (yi == 0)
+                        cout << "⎛";
+                    else if (yi > 0 && yi < pm->y - 1)
+                        cout << "⎜";
+                    else
+                        cout << "⎝";
+                }
+                for (xi = 0; xi < pm->x; xi++) {
+                    cout << std::setw(lp);
+                    if (xi > 3 && xi < pm->x - 4) {
+                        if (xi == 5) cout << "..  ";
+                    } else {
+                        if (isint && !issci)
+                            cout << (int)(pm->mx[yr + xi]);
+                        else
+                            cout << pm->mx[yr + xi];
+                        if (xi < pm->x - 1) cout << " ";
+                    }
+                }
+                if (pm->y == 1)
+                    cout << "]";
+                else {
+                    if (yi == 0)
+                        cout << "⎞";
+                    else if (yi > 0 && yi < pm->y - 1)
+                        cout << "⎟";
+                    else
+                        cout << "⎠";
+                }
+                cout << endl;
             }
-            yr = yi * pm->x;
-            if (pm->y == 1)
-                cout << "[";
-            else {
-                if (yi == 0)
-                    cout << "⎛";
-                else if (yi > 0 && yi < pm->y - 1)
-                    cout << "⎜";
-                else
-                    cout << "⎝";
-            }
-            for (xi = 0; xi < pm->x; xi++) {
-                cout << std::setw(lp);
-                if (isint && !issci)
-                    cout << (int)(pm->mx[yr + xi]);
-                else
-                    cout << pm->mx[yr + xi];
-                if (xi < pm->x - 1) cout << " ";
-            }
-            if (pm->y == 1)
-                cout << "]";
-            else {
-                if (yi == 0)
-                    cout << "⎞";
-                else if (yi > 0 && yi < pm->y - 1)
-                    cout << "⎟";
-                else
-                    cout << "⎠";
-            }
-            cout << endl;
         }
     }
     void family() {
@@ -526,8 +539,8 @@ int main(int, char **) {
     NRMatrix t5 = t3 + t4;
     cout << t5;
 
-    NRMatrix t10 = NRMatrix(&h, 3, 2, "t10", (vector<NRFloat>){1, 2, 3, 4, 5, 6});
-    NRMatrix t11 = NRMatrix(&h, 2, 3, "t11", (vector<NRFloat>){1, 4, 1, 3, 1, 2});
+    NRMatrix t10 = NRMatrix(&h, 10, 2, "t10", (vector<NRFloat>){7, 5, 8, 3, 3, 9, 10, 1, 2, 3, 4, 5, 6, 1, 2, 3, 3, 4, 2, 3});
+    NRMatrix t11 = NRMatrix(&h, 2, 10, "t11", (vector<NRFloat>){1, 4, 1, 3, 1, 2, 3, 7, 8, 1, 5, 5, 8, 9, 1, 3, 2, 5, 4, 1});
     cout << t10 << t11;
     NRMatrix t12 = (t10 * t11) * (t10 * t11);
     cout << t12;
