@@ -556,11 +556,14 @@ int main(int, char **) {
 
     tt3.family();
 
-    NRMatrix m = NRMatrix(&h, 1024, 1024, "m");
-    NRMatrix n = NRMatrix(&h, 1024, 1024, "n");
+    NRSize dim = 12000;
+    NRMatrix m = NRMatrix(&h, dim, dim, "m");
+    NRMatrix n = NRMatrix(&h, dim, dim, "n");
     m.pm->randNormal(0, 1);
     n.pm->randNormal(0, 1);
-    auto o = m * n;
+    auto m1 = m + n;
+    auto m2 = n * m + m;
+    auto o = m1 * m2;
     cout << m << n << o;
 }
 
