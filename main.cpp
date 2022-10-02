@@ -41,6 +41,7 @@ struct NRMatrixCore {
     NRSize y;
     NRSize l;
     std::string name = "";
+    string op;
     vector<NRMatrixCore *> children;
     bool bValid = false;
 
@@ -55,18 +56,19 @@ struct NRMatrixCore {
         y = 0;
         l = 0;
         name = "null";
+        op = "";
         bValid = false;
     }
-    NRMatrixCore(NRSize y, NRSize x, string name, vector<NRMatrixCore *> children = {})
-        : y(y), x(x), name(name), children(children) {
+    NRMatrixCore(NRSize y, NRSize x, string name, string op = "", vector<NRMatrixCore *> children = {})
+        : y(y), x(x), name(name), op(op), children(children) {
         l = x * y;
         mx = vector<NRFloat>(l);
         grad = mx;
         bValid = true;
         zeroGrad();
     }
-    NRMatrixCore(NRSize y, NRSize x, string name, vector<NRFloat> v, vector<NRMatrixCore *> children)
-        : y(y), x(x), name(name), children(children) {
+    NRMatrixCore(NRSize y, NRSize x, string name, vector<NRFloat> v, string op = "", vector<NRMatrixCore *> children = {})
+        : y(y), x(x), name(name), op(op), children(children) {
         l = x * y;
         if (v.size() == l)
             mx = v;
@@ -179,20 +181,20 @@ class NRMatrixHeap {
         if (srch == h.end()) return (NRMatrixCore *)nullptr;
         return &(h[name]);
     }
-    NRMatrixCore *add(NRSize y, NRSize x, string name, vector<NRMatrixCore *> children = {}) {
+    NRMatrixCore *add(NRSize y, NRSize x, string name, string op = "", vector<NRMatrixCore *> children = {}) {
         if (exists(name)) {
             cout << "FATAL: tried to add existing matrix " << name << " ignored." << endl;
             return nullptr;
         }
-        h[name] = NRMatrixCore(y, x, name, children);
+        h[name] = NRMatrixCore(y, x, name, op, children);
         return getP(name);
     }
-    NRMatrixCore *add(NRSize y, NRSize x, string name, vector<NRFloat> v, vector<NRMatrixCore *> children = {}) {
+    NRMatrixCore *add(NRSize y, NRSize x, string name, vector<NRFloat> v, string op = "", vector<NRMatrixCore *> children = {}) {
         if (exists(name)) {
             cout << "FATAL: tried to add existing matrix " << name << " ignored." << endl;
             return nullptr;
         }
-        h[name] = NRMatrixCore(y, x, name, v, children);
+        h[name] = NRMatrixCore(y, x, name, v, op, children);
         return getP(name);
     }
     bool erase(string name) {
@@ -272,7 +274,7 @@ class NRMatrix {
             cout << "INFO: Using cached version of " << name << endl;
             return ph->getP(name);
         }
-        pc = ph->add(pa->y, pa->x, name, (vector<NRMatrixCore *>){pa, pb});
+        pc = ph->add(pa->y, pa->x, name, "+", (vector<NRMatrixCore *>){pa, pb});
         for (iy = 0; iy < pa->y; iy++) {
             ry = iy * pa->x;
             for (ix = 0; ix < pa->x; ix++) {
@@ -313,7 +315,7 @@ class NRMatrix {
             cout << "INFO: Using cached version of " << name << endl;
             return ph->getP(name);
         }
-        pc = ph->add(pa->y, pb->x, name, (vector<NRMatrixCore *>){pa, pb});
+        pc = ph->add(pa->y, pb->x, name, "*", (vector<NRMatrixCore *>){pa, pb});
 #if defined(USE_SINGLE_PRECISION_FLOAT)
         // A bit of FORTRAN-charm for BLAS:
         // int M, K, N, LDA, LDB, LDC;
@@ -354,7 +356,7 @@ class NRMatrix {
             cout << "INFO: Using cached version of " << name << endl;
             return ph->getP(name);
         }
-        NRMatrixCore *pc = ph->add(pa->x, pa->y, name, (vector<NRMatrixCore *>){pa});
+        NRMatrixCore *pc = ph->add(pa->x, pa->y, name, "T", (vector<NRMatrixCore *>){pa});
         pc->mx = pa->mx;
         pc->t();
         return pc;
@@ -490,6 +492,7 @@ class NRMatrix {
         for (int i = 0; i < gen; i++)
             cout << "  ";
         cout << p->name;
+        if (p->op != "") cout << " " << p->op << " ";
         if (p->l == 0) {
             cout << " = INVALID MATRIX, abort!" << endl;
             return;
@@ -535,8 +538,10 @@ int main(int, char **) {
     cout << t1.t();
     NRMatrix tt = t1.t();
     cout << tt;
-    cout << t1.pm->x << " " << t1.pm->y << " " << tt.pm->x << " " << tt.pm->y << endl;
-    cout << t1 * tt;
+    NRMatrix tt3 = t1 * tt + tt.t() * t1.t();
+    cout << tt3;
+
+    tt3.family();
 }
 
 // Test-output:
