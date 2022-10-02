@@ -83,14 +83,27 @@ struct NRMatrixCore {
         zeroGrad();
     }
     void zero() {
+        // XXX children!
         for (NRSize i = 0; i < l; i++) {
             mx[i] = 0.0;
+            grad[i] = 0.0;
+        }
+    }
+    void ones() {
+        // XXX children!
+        for (NRSize i = 0; i < l; i++) {
+            mx[i] = 1.0;
             grad[i] = 0.0;
         }
     }
     void zeroGrad() {
         for (NRSize i = 0; i < l; i++) {
             grad[i] = 0.0;
+        }
+    }
+    void onesGrad() {
+        for (NRSize i = 0; i < l; i++) {
+            grad[i] = 1.0;
         }
     }
     void unit() {
@@ -101,6 +114,7 @@ struct NRMatrixCore {
                     mx[ry + ix] = 0.0;
                 else
                     mx[ry + ix] = 1.0;
+                grad[i] = 0.0;
             }
         }
     }
@@ -110,18 +124,12 @@ struct NRMatrixCore {
             for (ix = 0; ix < x; ix++) {
                 if (iy != ix) {
                     rx = ix * y;
-                    NRFloat s = mx[ry + ix];
-                    mx[ry + ix] = mx[rx + iy];
-                    mx[rx + iy] = s;
-                    s = grad[ry + ix];
-                    grad[ry + ix] = grad[rx + iy];
-                    grad[rx + iy] = s;
+                    std::swap(mx[ry + ix], mx[rx + iy]);
+                    std::swap(grad[ry + ix], grad[rx + iy]);
                 }
             }
         }
-        NRFloat sw = x;
-        x = y;
-        y = sw;
+        // std::swap(x, y);
     }
     void randNormal(NRFloat mean, NRFloat var) {
         std::random_device rd{};
@@ -246,6 +254,10 @@ class NRMatrix {
     NRSize ix, iy, rx, ry, i;  // don't always re-allocate
 
   public:
+    void zero() {
+        pm->zero();
+    }
+
     NRMatrixCore *matAdd(NRMatrix *pma, NRMatrix *pmb) {
         NRMatrixCore *pa = pma->pm;
         NRMatrixCore *pb = pmb->pm;
@@ -292,7 +304,7 @@ class NRMatrix {
         NRMatrixCore *pb = pmb->pm;
         NRMatrixCore *pc;
         if (pa->x != pb->y) {
-            std::cerr << "Invalid matrix mult: " << pa->name << '+' << pb->name << " " << pa->x << "," << pa->y << "<->" << pb->x << "," << pb->y << pa->x << "!=" << pb->y << " -> abort!" << endl;
+            std::cerr << "Invalid matrix mult: " << pa->name << '+' << pb->name << " " << pa->x << "," << pa->y << "<->" << pb->x << "," << pb->y << ": " << pa->x << "!=" << pb->y << " -> abort!" << endl;
             return ph->getP("null");
         }
         string name = "(" + pa->name + "*" + pb->name + ")";
@@ -334,6 +346,22 @@ class NRMatrix {
         NRMatrix s = NRMatrix(ph, pmc);
         // s.children.push_back(NRMatrix(*this));
         // s.children.push_back(NRMatrix(r));
+        return std::move(s);
+    }
+    NRMatrixCore *_tr(NRMatrixCore *pa) {
+        string name = "t(" + pa->name + ")";
+        if (ph->exists(name)) {
+            cout << "INFO: Using cached version of " << name << endl;
+            return ph->getP(name);
+        }
+        NRMatrixCore *pc = ph->add(pa->x, pa->y, name, (vector<NRMatrixCore *>){pa});
+        pc->mx = pa->mx;
+        pc->t();
+        return pc;
+    }
+    NRMatrix t() {
+        NRMatrixCore *pc = _tr(pm);
+        NRMatrix s = NRMatrix(ph, pc);
         return std::move(s);
     }
 
@@ -502,6 +530,13 @@ int main(int, char **) {
     cout << t12;
 
     t12.family();
+
+    cout << t1;
+    cout << t1.t();
+    NRMatrix tt = t1.t();
+    cout << tt;
+    cout << t1.pm->x << " " << t1.pm->y << " " << tt.pm->x << " " << tt.pm->y << endl;
+    cout << t1 * tt;
 }
 
 // Test-output:
