@@ -7,6 +7,13 @@ using nrd::NRSize;
 void matMulBench(NRMatrixHeap *ph) {
     vector<NRSize> matDims = {2, 3, 4, 5, 6, 8, 10, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 10000, 12000, 14000, 20000};
     vector<int> matReps = {5000, 1000, 1000, 1000, 1000, 1000, 500, 500, 100, 50, 50, 50, 50, 20, 10, 10, 5, 5, 5, 5};
+#ifdef USE_SINGLE_PRECISION_FLOAT
+    cout << "Benchmark, single precision" << endl
+         << endl;
+#else
+    cout << "Benchmark, double precision" << endl
+         << endl;
+#endif
     cout << "                                            Min              Mean             Max" << endl;
     for (int j = 0; j < matDims.size(); j++) {
         auto dim = matDims[j];
