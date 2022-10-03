@@ -266,9 +266,17 @@ class NRMatrix {
         pm->zero();
     }
 
-    NRMatrixCore *matAdd(NRMatrix *pma, NRMatrix *pmb) {
-        NRMatrixCore *pa = pma->pm;
-        NRMatrixCore *pb = pmb->pm;
+    void matAddDiff(NRMatrixCore *pm) {
+        if (pm->children.size() != 2) {
+            cout << "FATAL: matAddDiff requires two children!";
+            return;
+        }
+        NRMatrixCore *pma, *pmb;
+        pma = pm->children[0];
+        pmb = pm->children[1];
+        pma->grad = pma->grad + pm->grad;
+    }
+    NRMatrixCore *matAdd(NRMatrixCore *pa, NRMatrixCore *pb) {
         NRMatrixCore *pc;
         if (pa->x != pb->x || pa->y != pb->y) {
             std::cerr << "Invalid matrix add: " << pa->name << '+' << pb->name << " " << pa->x << "," << pa->y << "!=" << pb->x << "," << pb->y << " -> abort!" << endl;
@@ -293,7 +301,7 @@ class NRMatrix {
     }
 
     NRMatrix operator+(NRMatrix &r) {
-        NRMatrixCore *pmc = matAdd(this, &r);
+        NRMatrixCore *pmc = matAdd(this->pm, &(r->pm));
         NRMatrix s = NRMatrix(ph, pmc);
         // s.children.push_back(NRMatrix(*this));
         // s.children.push_back(NRMatrix(r));
@@ -305,6 +313,9 @@ class NRMatrix {
         // s.children.push_back(NRMatrix(*this));
         // s.children.push_back(NRMatrix(r));
         return std::move(s);
+    }
+
+    void matMulDiff(NRMatrixCore *pm) {
     }
 
     NRMatrixCore *matMul(NRMatrix *pma, NRMatrix *pmb) {
