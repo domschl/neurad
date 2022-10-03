@@ -413,15 +413,28 @@ class NRMatrix {
         bool use_pref = false;
         if (precision == -1) precision = getDefaultPrecision();
         std::string pref, spref;
+        std::string dimline;
         NRSize prefline;
+        dimline = "[" + std::to_string(pm->y) + "," + std::to_string(pm->x) + "]";
         if (pm->name != "") {
             pref = pm->name + " = ";
-            spref = "";
-            for (auto c : pref)
-                spref += " ";
-            use_pref = true;
-            prefline = pm->y / 2;
+        } else {
+            pref = "";
+            dimline += " = ";
         }
+        if (pref.length() > 25) {
+            pref = pref.substr(0, 11) + " .. " + pref.substr(pref.length() - 12);
+        }
+        int pl = std::max(pref.length(), dimline.length());
+        spref = "";
+        for (int i = 0; i < pl; i++) {
+            if (pref.length() < pl) pref += " ";
+            if (dimline.length() < pl) dimline += " ";
+            if (spref.length() < pl) spref += " ";
+        }
+        use_pref = true;
+        prefline = pm->y / 2;
+        if (prefline > 0) --prefline;
         cout << std::fixed << std::setprecision(precision);
         mn = min();
         ma = max();
@@ -439,16 +452,16 @@ class NRMatrix {
         if (ma > 10000 || ma < 0.1) {
             cout << std::scientific;
             issci = true;
-            lp += 9;
+            lp += 10;
         } else {
             issci = false;
             lp += (int)log10(ma) + precision + 3;
         }
         for (yi = 0; yi < pm->y; yi++) {
-            if (yi > 6 && yi < pm->y - 6 && (yi != prefline || !use_pref)) {
+            if (yi > 6 && yi < pm->y - 6 && ((yi != prefline && yi != prefline + 1) || !use_pref)) {
                 if (use_pref) {
                     if (yi == prefline - 1) cout << spref << "   ..." << endl;
-                    if (yi == prefline + 1) cout << spref << "   ..." << endl;
+                    if (yi == prefline + 2) cout << spref << "   ..." << endl;
                 } else {
                     if (yi == pm->y / 2) cout << "..." << endl;
                 }
@@ -456,6 +469,8 @@ class NRMatrix {
                 if (use_pref) {
                     if (yi == prefline)
                         cout << pref;
+                    else if (yi == prefline + 1)
+                        cout << dimline;
                     else
                         cout << spref;
                 }
