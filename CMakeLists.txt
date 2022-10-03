@@ -9,10 +9,10 @@ enable_testing()
 # If the user specifies -DCMAKE_BUILD_TYPE on the command line, take their definition
 # and dump it in the cache along with proper documentation, otherwise set CMAKE_BUILD_TYPE
 # to Debug prior to calling PROJECT()
-IF(DEFINED CMAKE_BUILD_TYPE)
-   SET(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of `build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
+IF(DEFINED CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE STREQUAL "")
+    SET(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of `build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
 ELSE()
-   SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
+    SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
 ENDIF()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -52,14 +52,19 @@ if(BLAS_FOUND)
     message(STATUS "BLAS " ${BLA_VENDOR} " found")
 endif(BLAS_FOUND)
 
-add_executable(neurad main.cpp)
-
-if(APPLE)
-    target_link_libraries(neurad LINK_PUBLIC ${BLAS_LIBRARIES})
-else()
-    target_link_libraries(neurad LINK_PUBLIC ${BLAS_LIBRARIES} cblas)
-endif()
-
+# if(APPLE)
+# target_link_libraries(neurad LINK_PUBLIC ${BLAS_LIBRARIES})
+# else()
+# target_link_libraries(neurad LINK_PUBLIC ${BLAS_LIBRARIES} cblas)
+# endif()
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
+
+include_directories("core")
+
+add_subdirectory("test")
+add_subdirectory("bench")
+
+# add_executable(neurad main.cpp)

@@ -18,9 +18,13 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
 ninja
 ```
 
-Run:
+Run (in build folder):
 ```bash
-./neurad
+./bench/bench_neurad
+```
+or
+```bash
+./test/test_neurad
 ```
 
 ## Matrix multiplication benchmarks (does not generalise! internal testing!)
