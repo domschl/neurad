@@ -7,8 +7,8 @@ WIP! unfinished, just started, ignore!
 ### Single precision
 
 | dim / computer | Raspberry Pi 4 | i5-7500 CPU @ 3.40GHz | Mac mini M1 |
-|           BLAS |       OpenBLAS |              OpenBLAS |  Accelerate |
 | -------------- | -------------- | --------------------- | ----------- |
+|           BLAS |       OpenBLAS |              OpenBLAS |  Accelerate |
 |         [2,2]  |    8129 ns     |     1783 ns           |   2250 ns   |
 |         [3,3]  |    7259 ns     |     1458 ns           |   2208 ns   |
 |         [4,4]  |    7351 ns     |     1305 ns           |   2083 ns   |
@@ -33,8 +33,8 @@ WIP! unfinished, just started, ignore!
 ### Double precision
 
 | dim / computer | Raspberry Pi 4 | i5-7500 CPU @ 3.40GHz | Mac mini M1 |
-|           BLAS |       OpenBLAS |              OpenBLAS |  Accelerate |
 | -------------- | -------------- | --------------------- | ----------- |
+|           BLAS |       OpenBLAS |              OpenBLAS |  Accelerate |
 |         [2,2]  |    8129 ns     |     1659 ns           |   2750 ns   |
 |         [3,3]  |    7259 ns     |     1328 ns           |   2875 ns   |
 |         [4,4]  |    7351 ns     |     1209 ns           |   2542 ns   |
