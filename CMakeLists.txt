@@ -4,16 +4,27 @@ project(neurad VERSION 0.1.0)
 include(CTest)
 enable_testing()
 
-# Build type needs to be set as parameter to CMAKE: -DCMAKE_BUILD_TYPE=xxxx
-# set(CMAKE_BUILD_TYPE Release)
-# If the user specifies -DCMAKE_BUILD_TYPE on the command line, take their definition
-# and dump it in the cache along with proper documentation, otherwise set CMAKE_BUILD_TYPE
-# to Debug prior to calling PROJECT()
-IF(DEFINED CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE STREQUAL "")
-    SET(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of `build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
-ELSE()
-    SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
-ENDIF()
+# Snatched from Fuchsia:
+IF(NOT CMAKE_BUILD_TYPE)
+    SET(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build Type" FORCE)
+ENDIF(NOT CMAKE_BUILD_TYPE)
+
+# Set a value type to properly display CMAKE_BUILD_TYPE on GUI if the
+# value type is "UNINITIALIZED".
+GET_PROPERTY(cached_type CACHE CMAKE_BUILD_TYPE PROPERTY TYPE)
+
+IF("${cached_type}" STREQUAL "UNINITIALIZED")
+    SET(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING "Build Type" FORCE)
+ENDIF("${cached_type}" STREQUAL "UNINITIALIZED")
+
+# Check the Build Type.
+IF(NOT "${CMAKE_BUILD_TYPE}"
+    MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel)\$")
+    MESSAGE(FATAL_ERROR
+        "Unknown keyword for CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}\n"
+        "Acceptable keywords: Debug,Release,RelWithDebInfo,MinSizeRel")
+ENDIF(NOT "${CMAKE_BUILD_TYPE}"
+    MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel)\$")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
