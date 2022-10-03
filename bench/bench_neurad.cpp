@@ -81,9 +81,12 @@ void matMulBench(NRMatrixHeap *ph) {
 }
 
 int main(int, char **) {
-#ifdef DEBUG
-    cout << "ERROR: Debug build, benchmarks invalid!"
+#ifndef NDEBUG
+    cout << "---------------------------------------" << endl;
+    cout << "ERROR: Debug build, benchmarks invalid!" << endl;
+    cout << "---------------------------------------" << endl
+         << endl;
 #endif
-        NRMatrixHeap h;
+    NRMatrixHeap h;
     matMulBench(&h);
 }
