@@ -2,7 +2,10 @@
 Target: Neural nets with auto-diff with BLAS as only dep.
 WIP! unfinished, just started, ignore!
 
-## Matrix benchmarks (does not generalise! internal testing!)
+## Matrix multiplication benchmarks (does not generalise! internal testing!)
+
+Benchmark (single run, imprecise!) of matrix multiplication of given dimension
+of two matrices with random normal intialization.
 
 ### Single precision
 
@@ -29,7 +32,7 @@ WIP! unfinished, just started, ignore!
 | [12000,12000]  |                |                       |   3490 ms   |
 | [14000,14000]  |                |                       |   5947 ms   |
 
-Strange things happen in M1-land at 128x128, sudden high performance boost.
+Strange things happen in ARM & M1-land at 128x128, sudden high performance boost.
 
 ### Double precision
 
