@@ -82,23 +82,3 @@ of two matrices with random normal intialization. Measured after warm-up, minimu
 | [10000,10000]  |                |                       |   8110 ms   |    3667 ms        |
 | [12000,12000]  |                |                       |             |    6220 ms        |
 | [14000,14000]  |                |                       |             |                   |
-
-
-                                            Min              Mean             Max
-Matrix shape =           [2,2]           291 ns            416 ns        15792 ns
-Matrix shape =           [3,3]           333 ns            421 ns         5625 ns
-Matrix shape =           [4,4]           291 ns            393 ns         6042 ns
-Matrix shape =           [5,5]           333 ns            462 ns         5125 ns
-Matrix shape =           [6,6]           334 ns            485 ns         6209 ns
-Matrix shape =           [8,8]           375 ns            503 ns         6083 ns
-Matrix shape =         [10,10]           500 ns            599 ns         5791 ns
-Matrix shape =         [32,32]          1167 ns           1422 ns         5458 ns
-Matrix shape =         [64,64]          3625 ns           3829 ns         4250 ns
-Matrix shape =       [128,128]         19791 ns          19859 ns        20000 ns
-Matrix shape =       [256,256]           116 µs            117 µs          127 µs
-Matrix shape =       [512,512]          1036 µs           1223 µs         1440 µs
-Matrix shape =     [1024,1024]          9264 µs          10377 µs        11553 µs
-Matrix shape =     [2048,2048]         74874 µs          75085 µs        75451 µs
-Matrix shape =     [4096,4096]           599 ms            607 ms          633 ms
-Matrix shape =     [8192,8192]          4803 ms           4812 ms         4829 ms
-Matrix shape =   [10000,10000]          8110 ms           8110 ms         8110 ms
