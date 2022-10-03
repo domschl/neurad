@@ -138,17 +138,19 @@ struct NRMatrixCore {
         std::random_device rd{};
         std::mt19937 gen{rd()};
         std::normal_distribution<> dn{mean, var};
-        for (i = 0; i < l; i++)
+        for (i = 0; i < l; i++) {
             mx[i] = dn(gen);
-        grad[i] = 0;
+            grad[i] = 0;
+        }
     }
     void randInt(int a, int b) {  // Inclusive [a,b]
         std::random_device rd{};
         std::mt19937 gen{rd()};
         std::uniform_int_distribution<> di{a, b};
-        for (i = 0; i < l; i++)
+        for (i = 0; i < l; i++) {
             mx[i] = di(gen);
-        grad[i] = 0;
+            grad[i] = 0;
+        }
     }
     NRFloat get(NRSize yi, NRSize xi) {
         return mx[yi * x + xi];
@@ -559,12 +561,15 @@ void matMulBench(NRMatrixHeap *ph) {
         } else if (td < 100000000) {
             unit = "µs";
             td /= 1000;
-        } else if (td > 100000000000) {
+        } else if (td < 100000000000) {
             unit = "ms";
             td /= 1000000;
+        } else {
+            unit = "s";
+            td /= 1000000000;
         }
         // std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
-        std::cout << "Matrix dim = " << dim << ": " << td << unit << std::endl;
+        std::cout << "Matrix shape = [" << dim << "," << dim << "]: " << td << unit << std::endl;
         ph->erase(name);
         ph->erase(m.pm->name);
     }
