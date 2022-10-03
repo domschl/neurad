@@ -2,6 +2,27 @@
 Target: Neural nets with auto-diff with BLAS as only dep.
 WIP! unfinished, just started, ignore!
 
+## Build
+
+Requirements: `cmake`, `ninja`, for non-Apple: `openblas`.
+
+- Linux: `pacman -S cmake ninja openblas` (or `apt...`) and some c compiler.
+- Mac: `brew install cmake ninja`, command-line tools required.
+
+Clone repo, create `build` directory:
+
+```bash
+mkdir build
+cd build
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+ninja
+```
+
+Run:
+```bash
+./neurad
+```
+
 ## Matrix multiplication benchmarks (does not generalise! internal testing!)
 
 Benchmark (single run, imprecise!) of matrix multiplication of given dimension
