@@ -38,12 +38,35 @@ typedef int NRSize;
 NRFloat NaN = std::nan("0");
 #endif
 
+struct NRTensorAtom {
+    vector<NRFloat> t;
+    vector<NRSize> d;
+    NRTensorAtom() {
+        t = {};
+        d = {};
+    }
+    NRTensorAtom(vector<NRSize> d)
+        : d(d) {
+        t = vector<NRFloat>(size());
+    }
+    NRSize size() {
+        NRSize l = 1;
+        for (int i = 0; i < d.size(); i++)
+            l *= d[i];
+        return l;
+    }
+};
+
 struct NRMatrixCore {
+    NRTensorAtom m;
+    NRTensorAtom grad;
+    /*
     vector<NRFloat> mx;
     vector<NRFloat> grad;
     NRSize x;
     NRSize y;
     NRSize l;
+    */
     std::string name = "";
     string op;
     vector<NRMatrixCore *> children;
@@ -54,84 +77,84 @@ struct NRMatrixCore {
 
   public:
     NRMatrixCore() {
-        mx = {};
-        grad = {};
+        m = NRTensorAtom();
+        grad = NRTensorAtom();
+        /*
         x = 0;
         y = 0;
         l = 0;
+        */
         name = "null";
         op = "";
         bValid = false;
     }
     NRMatrixCore(NRSize y, NRSize x, string name, string op = "", vector<NRMatrixCore *> children = {})
-        : y(y), x(x), name(name), op(op), children(children) {
-        l = x * y;
-        mx = vector<NRFloat>(l);
-        grad = mx;
+        : name(name), op(op), children(children) {
+        // l = x * y;
+        // mx = vector<NRFloat>(l);
+        // grad = mx;
+        m = NRTensorAtom({y, x});
+        grad = NRTensorAtom({y, x});
         bValid = true;
         zeroGrad();
     }
     NRMatrixCore(NRSize y, NRSize x, string name, vector<NRFloat> v, string op = "", vector<NRMatrixCore *> children = {})
-        : y(y), x(x), name(name), op(op), children(children) {
-        l = x * y;
-        if (v.size() == l)
-            mx = v;
+        : name(name), op(op), children(children) {
+        // l = x * y;
+        m = NRTensorAtom({y, x});
+        if (m.size() == v.size())
+            m.t = v;
         else {
-            cout << "ERROR: incompatible length of initializing vector for matrix " << name << ", partial init!" << endl;
-            mx = vector<NRFloat>(l);
-            l = std::min(v.size(), mx.size());
-            for (int i = 0; i < l; i++) {
-                mx[i] = v[i];
-            }
+            cout << "ERROR: incompatible length of initializing vector for matrix " << name << ", NO init!" << endl;
         }
-        grad = mx;
+        grad = NRTensorAtom({y, x});
         bValid = true;
         zeroGrad();
     }
     void zero() {
         // XXX children!
-        for (NRSize i = 0; i < l; i++) {
-            mx[i] = 0.0;
-            grad[i] = 0.0;
+        for (NRSize i = 0; i < m.t.size(); i++) {
+            m.t[i] = 0.0;
+            grad.t[i] = 0.0;
         }
     }
     void ones() {
         // XXX children!
-        for (NRSize i = 0; i < l; i++) {
-            mx[i] = 1.0;
-            grad[i] = 0.0;
+        for (NRSize i = 0; i < m.t.size(); i++) {
+            m.t[i] = 1.0;
+            grad.t[i] = 0.0;
         }
     }
     void zeroGrad() {
-        for (NRSize i = 0; i < l; i++) {
-            grad[i] = 0.0;
+        for (NRSize i = 0; i < m.t.size(); i++) {
+            grad.t[i] = 0.0;
         }
     }
     void onesGrad() {
-        for (NRSize i = 0; i < l; i++) {
-            grad[i] = 1.0;
+        for (NRSize i = 0; i < m.t.size(); i++) {
+            grad.t[i] = 1.0;
         }
     }
     void unit() {
-        for (iy = 0; iy < y; iy++) {
-            ry = iy * x;
-            for (ix = 0; ix < x; ix++) {
+        for (iy = 0; iy < m.d[0]; iy++) {
+            ry = iy * m.d[1];
+            for (ix = 0; ix < m.d[1]; ix++) {
                 if (iy != ix)
-                    mx[ry + ix] = 0.0;
+                    m.t[ry + ix] = 0.0;  // XXX: call overload
                 else
-                    mx[ry + ix] = 1.0;
-                grad[i] = 0.0;
+                    m.t[ry + ix] = 1.0;
+                grad.t[i] = 0.0;
             }
         }
     }
     void t() {
-        for (iy = 0; iy < y; iy++) {
-            ry = iy * x;
-            for (ix = 0; ix < x; ix++) {
+        for (iy = 0; iy < m.d[0]; iy++) {
+            ry = iy * m.d[1];
+            for (ix = 0; ix < m.d[1]; ix++) {
                 if (iy != ix) {
-                    rx = ix * y;
-                    std::swap(mx[ry + ix], mx[rx + iy]);
-                    std::swap(grad[ry + ix], grad[rx + iy]);
+                    rx = ix * m.d[0];
+                    std::swap(m.t[ry + ix], m.t[rx + iy]);
+                    std::swap(grad.t[ry + ix], grad.t[rx + iy]);
                 }
             }
         }
@@ -141,25 +164,25 @@ struct NRMatrixCore {
         std::random_device rd{};
         std::mt19937 gen{rd()};
         std::normal_distribution<> dn{mean, var};
-        for (i = 0; i < l; i++) {
-            mx[i] = dn(gen);
-            grad[i] = 0;
+        for (i = 0; i < m.t.size(); i++) {
+            m.t[i] = dn(gen);
+            grad.t[i] = 0;
         }
     }
     void randInt(int a, int b) {  // Inclusive [a,b]
         std::random_device rd{};
         std::mt19937 gen{rd()};
         std::uniform_int_distribution<> di{a, b};
-        for (i = 0; i < l; i++) {
-            mx[i] = di(gen);
-            grad[i] = 0;
+        for (i = 0; i < m.t.size(); i++) {
+            m.t[i] = di(gen);
+            grad.t[i] = 0;
         }
     }
     NRFloat get(NRSize yi, NRSize xi) {
-        return mx[yi * x + xi];
+        return m.t[yi * m.d[1] + xi];  // XXX: call overload
     }
     void set(NRSize yi, NRSize xi, NRFloat v) {
-        mx[yi * x + xi] = v;
+        m.t[yi * m.d[1] + xi] = v;
     }
 };
 
@@ -179,7 +202,7 @@ class NRMatrixHeap {
     bool isCompatible(string name, NRSize y, NRSize x) {
         NRMatrixCore *pmc = getP(name);
         if (pmc == nullptr) return false;
-        if (pmc->y == y && pmc->x == x) return true;
+        if (pmc->m.d[0] == y && pmc->m.d[1] == x) return true;
         return false;
     }
     NRMatrixCore *getP(string name) {
