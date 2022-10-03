@@ -29,9 +29,11 @@ void matMulBench(NRMatrixHeap *ph) {
                  << "   "
                  << "\r" << std::flush;
             m.pm->randNormal(0, 1);
+            // Start BENCHMARK
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             NRMatrix n = m * m;
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            // End BENCHMARK
             auto td = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
             if ((j == 0 && i > 400) || (j > 0 && i > reps / 10 + 3)) {  // skip warmup phases
                 if (act == 0 || td < min_time) min_time = td;
