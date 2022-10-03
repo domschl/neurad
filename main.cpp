@@ -554,25 +554,27 @@ void matMulBench(NRMatrixHeap *ph) {
         NRMatrix n = m * m;
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-        bool tooSlow=false;
+        bool tooSlow = false;
         string unit;
         auto td = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+        int unicode_frickel = 0;
         if (td < 100000) {
             unit = "ns";
         } else if (td < 100000000) {
             unit = "µs";
+            unicode_frickel = 1;
             td /= 1000;
         } else if (td < 100000000000) {
             unit = "ms";
             td /= 1000000;
-            if (td>5000) tooSlow=true;
+            if (td > 5000) tooSlow = true;
         } else {
-            tooSlow=true;
+            tooSlow = true;
             unit = "s";
             td /= 1000000000;
         }
         // std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
-        std::cout << "Matrix shape = [" << dim << "," << dim << "]: " << td << unit << std::endl;
+        std::cout << "Matrix shape = " << std::setw(16) << "[" + std::to_string(dim) + "," + std::to_string(dim) + "] " << std::setw(16 + unicode_frickel) << std::to_string(td) + " " + unit << std::endl;
         ph->erase(name);
         ph->erase(m.pm->name);
         if (tooSlow) break;
