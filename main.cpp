@@ -7,6 +7,7 @@
 #include <set>
 #include <map>
 #include <functional>
+#include <chrono>
 
 using std::cout;
 using std::endl;
@@ -541,6 +542,34 @@ std::ostream &operator<<(std::ostream &os, const NRMatrix &mat) {
     return os;
 }
 
+void matMulBench(NRMatrixHeap *ph) {
+    vector<NRSize> matDims = {2, 3, 4, 5, 10, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 10000, 12000, 14000};
+    for (NRSize dim : matDims) {
+        string name = "d" + std::to_string(dim);
+        NRMatrix m = NRMatrix(ph, dim, dim, name);
+        m.pm->randNormal(0, 1);
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        NRMatrix n = m * m;
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        string unit;
+        auto td = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+        if (td < 100000) {
+            unit = "ns";
+        } else if (td < 100000000) {
+            unit = "µs";
+            td /= 1000;
+        } else if (td > 100000000000) {
+            unit = "ms";
+            td /= 1000000;
+        }
+        // std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+        std::cout << "Matrix dim = " << dim << ": " << td << unit << std::endl;
+        ph->erase(name);
+        ph->erase(m.pm->name);
+    }
+}
+
 int main(int, char **) {
     NRMatrixHeap h;
     NRMatrix t1 = NRMatrix(&h, 3, 2, "t1", (vector<NRFloat>){1, 2, 3, 4, 5, 6});
@@ -570,16 +599,18 @@ int main(int, char **) {
     cout << tt3;
 
     tt3.family();
-
-    NRSize dim = 12000;
-    NRMatrix m = NRMatrix(&h, dim, dim, "m");
-    NRMatrix n = NRMatrix(&h, dim, dim, "n");
-    m.pm->randNormal(0, 1);
-    n.pm->randNormal(0, 1);
-    auto m1 = m + n;
-    auto m2 = n * m + m;
-    auto o = m1 * m2;
-    cout << m << n << o;
+    /*
+        NRSize dim = 12000;
+        NRMatrix m = NRMatrix(&h, dim, dim, "m");
+        NRMatrix n = NRMatrix(&h, dim, dim, "n");
+        m.pm->randNormal(0, 1);
+        n.pm->randNormal(0, 1);
+        auto m1 = m + n;
+        auto m2 = n * m + m;
+        auto o = m1 * m2;
+        cout << m << n << o;
+    */
+    matMulBench(&h);
 }
 
 // Test-output:
