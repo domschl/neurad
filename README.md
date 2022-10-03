@@ -18,7 +18,7 @@ WIP! unfinished, just started, ignore!
 |       [10,10]  |    9889 ns     |     1583 ns           |   2542 ns   |
 |       [32,32]  |     122 µs     |     7150 ns           |  30333 ns   |
 |       [64,64]  |     408 µs     |    27197 ns           |  18375 ns   |
-|     [128,128]  |    2172 µs     |    42026 µs           |    103 µs   | <- (!)
+|     [128,128]  |    2172 µs     |    42026 µs           |    103 µs   |
 |     [256,256]  |    6040 µs     |     8234 µs           |    412 µs   |
 |     [512,512]  |   29476 µs     |    10760 µs           |   1214 µs   |
 |   [1024,1024]  |     188 ms     |    25486 µs           |   3702 µs   |
@@ -29,6 +29,7 @@ WIP! unfinished, just started, ignore!
 | [12000,12000]  |                |                       |   3490 ms   |
 | [14000,14000]  |                |                       |   5947 ms   |
 
+Strange things happen in M1-land at 128x128, sudden high performance boost.
 
 ### Double precision
 
@@ -44,7 +45,7 @@ WIP! unfinished, just started, ignore!
 |       [10,10]  |    9889 ns     |     1645 ns           |   3459 ns   |
 |       [32,32]  |     122 µs     |    14753 ns           |    355 µs   |
 |       [64,64]  |     408 µs     |    54334 ns           |  33167 ns   |
-|     [128,128]  |    2172 µs     |    24113 µs           |    159 µs   | <- (!)
+|     [128,128]  |    2172 µs     |    24113 µs           |    159 µs   |
 |     [256,256]  |    6040 µs     |    17583 µs           |    767 µs   |
 |     [512,512]  |   29476 µs     |    24362 µs           |   3544 µs   |
 |   [1024,1024]  |     188 ms     |    17310 µs           |  13818 µs   |
@@ -54,23 +55,3 @@ WIP! unfinished, just started, ignore!
 | [10000,10000]  |                |                       |             |
 | [12000,12000]  |                |                       |             |
 | [14000,14000]  |                |                       |             |
-
-Matrix shape =           [2,2]          2250 ns
-Matrix shape =           [3,3]          2208 ns
-Matrix shape =           [4,4]          2083 ns
-Matrix shape =           [5,5]          2250 ns
-Matrix shape =           [6,6]          2334 ns
-Matrix shape =           [8,8]          2292 ns
-Matrix shape =         [10,10]          2542 ns
-Matrix shape =         [32,32]         30333 ns
-Matrix shape =         [64,64]         18375 ns
-Matrix shape =       [128,128]           103 µs
-Matrix shape =       [256,256]           412 µs
-Matrix shape =       [512,512]          1214 µs
-Matrix shape =     [1024,1024]          3702 µs
-Matrix shape =     [2048,2048]         22357 µs
-Matrix shape =     [4096,4096]           159 ms
-Matrix shape =     [8192,8192]          1230 ms
-Matrix shape =   [10000,10000]          2129 ms
-Matrix shape =   [12000,12000]          3490 ms
-Matrix shape =   [14000,14000]          5947 ms
