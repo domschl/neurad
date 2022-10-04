@@ -34,7 +34,7 @@ of two matrices with random normal intialization. Measured after warm-up, minimu
 
 ### Single precision
 
-| dim / computer | Raspberry Pi 4 | i5-7500 CPU @ 3.40GHz | Mac mini M1 | Mac Studio M1 Pro |
+| dim / computer | Raspberry Pi 4 | i5-7500 CPU @ 3.40GHz | Mac mini M1 | Mac Studio M1 Max |
 | -------------- | -------------- | --------------------- | ----------- | ----------------- |
 |           BLAS |       OpenBLAS |              OpenBLAS |  Accelerate |        Accelerate |
 |         [2,2]  |    3240 ns     |      470 ns           |    291 ns   |     333 ns        |
@@ -60,7 +60,7 @@ of two matrices with random normal intialization. Measured after warm-up, minimu
 
 ### Double precision
 
-| dim / computer | Raspberry Pi 4 | i5-7500 CPU @ 3.40GHz | Mac mini M1 | Mac Studio M1 Pro |
+| dim / computer | Raspberry Pi 4 | i5-7500 CPU @ 3.40GHz | Mac mini M1 | Mac Studio M1 Max |
 | -------------- | -------------- | --------------------- | ----------- | ----------------- |
 |           BLAS |       OpenBLAS |              OpenBLAS |  Accelerate |        Accelerate |
 |         [2,2]  |    3111 ns     |      441 ns           |    291 ns   |     333 ns        |
