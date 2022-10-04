@@ -10,6 +10,7 @@
 #include <map>
 #include <functional>
 #include <chrono>
+#include <algorthms>
 
 using std::cout;
 using std::endl;
@@ -41,12 +42,14 @@ NRFloat NaN = std::nan("0");
 struct NRTensorAtom {
     vector<NRFloat> t;
     vector<NRSize> d;
-    NRTensorAtom() {
+    string name;
+    NRTensorAtom(string name = "")
+        : name(name) {
         t = {};
         d = {};
     }
-    NRTensorAtom(vector<NRSize> d)
-        : d(d) {
+    NRTensorAtom(vector<NRSize> d, string name = "")
+        : d(d), name(name) {
         t = vector<NRFloat>(size());
     }
     NRSize size() {
@@ -54,6 +57,61 @@ struct NRTensorAtom {
         for (int i = 0; i < d.size(); i++)
             l *= d[i];
         return l;
+    }
+    string shapeString() {
+        string s = "[";
+        for (int i = 0; i < d.size(); i++) {
+            if (i == 0)
+                s += std::to_string(d[i]);
+            else
+                s += "," + std::to_string(d[i]);
+        }
+        s += "]";
+        std::move(s);
+    }
+    NRSize sharedDims(NRTensor &a, NRTensor &b) {
+        vector<NRSize> la = a.s;
+        vector<NRSize> lb = b.s;
+        NRSize = 0;
+        for (NRSize d : la) {
+            pos = std::find(lb.begin(), lb.end(), d);
+            if (pos != lb.end()) {
+                lb.erase(pos);
+                ++shared;
+            }
+        }
+        return shared;
+    }
+    NRTensorAtom tensorAdd(NRTensorAtom &a, NRTensorAtom &b) {
+        NRSize sa = a.size();
+        NRSize sb = b.size();
+        NRSize smin = std::min(sa, sb);
+        NRSize smax = std::max(sa, sb);
+        if (smax - smin > 1) {
+            cout << "ERROR, dimensions <" << a.name << ">,<" << b.name, "> incompatible for add: " << a.shapeString() << " vs. " << b.shapeString() << endl;
+            std::move(NRTensorAtom());
+        }
+        int delta = 0;
+        for (int i = 0; i < std::min(sa, sb); i++)
+            if (a.size() == b.size()) {  // XXX don't
+                if (a.d[i] != b.d[i]) ++delta;
+            } else {  // XXX check broadcast!
+            }
+    }
+
+    NRTensorAtom operator+(NRTensorAtom &r) {
+        NRMatrixCore *pmc = matAdd(this->pm, &(r->pm));
+        NRMatrix s = NRMatrix(ph, pmc);
+        // s.children.push_back(NRMatrix(*this));
+        // s.children.push_back(NRMatrix(r));
+        return std::move(s);
+    }
+    NRMatrix operator+(NRMatrix &&r) {
+        NRMatrixCore *pmc = matAdd(this, &r);
+        NRMatrix s = NRMatrix(ph, pmc);
+        // s.children.push_back(NRMatrix(*this));
+        // s.children.push_back(NRMatrix(r));
+        return std::move(s);
     }
 };
 
