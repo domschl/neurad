@@ -10,7 +10,7 @@
 #include <map>
 #include <functional>
 #include <chrono>
-#include <algorthms>
+//#include <algorithm>
 
 using std::cout;
 using std::endl;
@@ -69,18 +69,46 @@ struct NRTensorAtom {
         s += "]";
         std::move(s);
     }
-    NRSize sharedDims(NRTensor &a, NRTensor &b) {
-        vector<NRSize> la = a.s;
-        vector<NRSize> lb = b.s;
-        NRSize = 0;
+    NRSize sharedDims(NRTensorAtom &a, NRTensorAtom &b) {
+        // check, how many dimensions occure in both a and b, ignoring permuts.
+        vector<NRSize> la = a.d;
+        vector<NRSize> lb = b.d;
+        NRSize shared = 0;
         for (NRSize d : la) {
-            pos = std::find(lb.begin(), lb.end(), d);
+            auto pos = std::find(lb.begin(), lb.end(), d);
             if (pos != lb.end()) {
                 lb.erase(pos);
                 ++shared;
             }
         }
         return shared;
+    }
+    bool isBroadcastable(NRTensorAtom &a, NRTensorAtom &b) {
+        NRSize sa = a.size();
+        NRSize sb = b.size();
+        NRSize smin = std::min(sa, sb);
+        NRSize smax = std::max(sa, sb);
+        if (smax - smin > 1) return false;
+        NRSize brdims = 0;
+        NRSize ap = 0;
+        NRSize bp = 0;
+        for (NRSize i = 0; i < smax; i++) {
+            if (ap >= sa) {
+                ++brdims;
+                ++ap;
+                ++bp;
+                continue;
+            }
+            if (bp >= sb) {
+                ++brdims;
+                ++ap;
+                ++bp;
+                continue;
+            }
+            if (a.d[ap] != b.d[bp]) {
+                if (a.d[ap] % b.d[bp] == 0 || b.d[bp])
+            }
+        }
     }
     NRTensorAtom tensorAdd(NRTensorAtom &a, NRTensorAtom &b) {
         NRSize sa = a.size();
