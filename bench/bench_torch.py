@@ -50,33 +50,34 @@ matReps = [
     5,
 ]
 
+
 def humanTime(tsec):
-    if tsec>1:
+    if tsec > 1:
         return f"{tsec:.3f} s"
-    if tsec>0.001:
+    if tsec > 0.001:
         return f"{tsec*1000:.3f} ms"
     return f"{tsec*1000000:.3f} µs"
 
-results=[]
+
+results = []
 for i, dim in enumerate(matDims):
     min = -1
     for rep in range(1):
-        m = torch.randn(dim, dim, device=mdev)
+        m = torch.randn(dim, dim, device=mdev) / 10.0
         p = m
         t0 = time.time()
         for _ in range(matReps[i]):
             p = p @ m
-        print(p[0,0])  # Force caculations, introduces python overhead!
+        print(p[0, 0])  # Force caculations, introduces python overhead!
         t1 = time.time()
-        d=(t1-t0)/matReps[i]
+        d = (t1 - t0) / matReps[i]
         if rep == 0 or d < min:
             min = d
 
-    smin=humanTime(min)
-    results+=[(dim,smin)]
+    smin = humanTime(min)
+    results += [(dim, smin)]
     print(f"Dim: {dim}x{dim}: {smin}")
 print("------------------------------------------------")
 print(f"{menv.describe()}")
 for dim, smin in results:
     print(f"Dim: {dim}x{dim}: {smin}")
-    
