@@ -99,4 +99,4 @@ If fusing is not possible, or for matrix dims < 1000, Accelerate is the better c
 | [20000,20000]  |          |  11.705 s   |  11.703 s   |  11.744 s  |  13.375 s   |
  
 - OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Tensorflow:  2.10.0, GPU: METAL
-- OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Pytorch: 1.13.0.dev20221004, GPU: MPS Metal acceleratora
+- OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Pytorch: 1.13.0.dev20221004, GPU: MPS Metal accelerator
