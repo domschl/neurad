@@ -62,8 +62,11 @@ of two matrices with random normal intialization. Measured after warm-up, minimu
 
 Note: the benchmarks for Tensorflow and Pytorch forced calculation by accessing one
 element of the result of the matrix multiplication. 
+
 This introduces considerable python-overhead for columns marked with `1x` (one single
-matrix multiplication).
+matrix multiplication). So M1 GPUs are no more 'unified' than other external graphics
+cards.
+
 The columns `nx` measure time for one multiplication within several fused matrix 
 multiplications.
 
@@ -95,5 +98,5 @@ If fusing is not possible, or for matrix dims < 1000, Accelerate is the better c
 | [14000,14000]  | 6244 ms  |  4.334 s    |  4.253 s    |  3.958 s   |  4.141 s    |
 | [20000,20000]  |          |  11.705 s   |  11.703 s   |  11.744 s  |  13.375 s   |
  
-OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Tensorflow:  2.10.0, GPU: METAL
-OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Pytorch: 1.13.0.dev20221004, GPU: MPS Metal acceleratora
+- OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Tensorflow:  2.10.0, GPU: METAL
+- OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Pytorch: 1.13.0.dev20221004, GPU: MPS Metal acceleratora
