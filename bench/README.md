@@ -62,8 +62,11 @@ of two matrices with random normal intialization. Measured after warm-up, minimu
 
 Note: the benchmarks for Tensorflow and Pytorch forced calculation by accessing one
 element of the result of the matrix multiplication. 
+
 This introduces considerable python-overhead for columns marked with `1x` (one single
-matrix multiplication).
+matrix multiplication). So M1 GPUs are no more 'unified' than other external graphics
+cards.
+
 The columns `nx` measure time for one multiplication within several fused matrix 
 multiplications.
 
@@ -72,15 +75,15 @@ Performance between Torch MPS and Tensorflow GPU on M1 seems pretty much identic
 If fusing is not possible, or for matrix dims < 1000, Accelerate is the better choice.
 
 
-| dim / computer | M1 Accel | TF Metal 1x | TF Metal nx |Torch MPS 1x| Torch MPS nx|
-| -------------- | ---------------------- | ----------- | ---------- | ----------- |
-| [2,2]          | 291 ns   |  560.760 µs |  48.073 µs  |  2.422 ms  |  38.831 µs  |
-| [3,3]          | 333 ns   |  544.071 µs |  49.844 µs  |  3.179 ms  |  37.671 µs  |
-| [4,4]          | 291 ns   |  550.032 µs |  50.068 µs  |  3.177 ms  |  37.754 µs  |
-| [5,5]          | 291 ns   |  575.066 µs |  50.373 µs  |  3.070 ms  |  37.773 µs  |
-| [6,6]          | 333 ns   |  591.040 µs |  49.852 µs  |  3.040 ms  |  37.181 µs  |
-| [8,8]          | 333 ns   |  557.661 µs |  49.926 µs  |  3.155 ms  |  36.961 µs  |
-| [10,10]        | 583 ns   |  613.928 µs |  55.102 µs  |  3.233 ms  |  41.356 µs  |
+| dim / computer | M1 Accel | TF Metal 1x | TF Metal nx |Torch MPS 1x | Torch MPS nx |
+| -------------- | -------- | ----------- | ----------- | ----------- | ------------ |
+| [2,2]          | 291 ns   |  560.760 µs |  48.073 µs  |  2.422 ms  |  38.831 µs   |
+| [3,3]          | 333 ns   |  544.071 µs |  49.844 µs  |  3.179 ms  |  37.671 µs   |
+| [4,4]          | 291 ns   |  550.032 µs |  50.068 µs  |  3.177 ms  |  37.754 µs   |
+| [5,5]          | 291 ns   |  575.066 µs |  50.373 µs  |  3.070 ms  |  37.773 µs   |
+| [6,6]          | 333 ns   |  591.040 µs |  49.852 µs  |  3.040 ms  |  37.181 µs   |
+| [8,8]          | 333 ns   |  557.661 µs |  49.926 µs  |  3.155 ms  |  36.961 µs   |
+| [10,10]        | 583 ns   |  613.928 µs |  55.102 µs  |  3.233 ms  |  41.356 µs   |
 | [32,32]        | 791 ns   |  535.965 µs |  53.460 µs  |  3.126 ms  |  41.022 µs  |
 | [64,64]        | 1833 ns  |  543.118 µs |  70.541 µs  |  3.222 ms  |  65.658 µs  |
 | [128,128]      | 7125 ns  |  607.967 µs |  97.060 µs  |  3.244 ms  |  96.602 µs  |
@@ -95,5 +98,5 @@ If fusing is not possible, or for matrix dims < 1000, Accelerate is the better c
 | [14000,14000]  | 6244 ms  |  4.334 s    |  4.253 s    |  3.958 s   |  4.141 s    |
 | [20000,20000]  |          |  11.705 s   |  11.703 s   |  11.744 s  |  13.375 s   |
  
-OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Tensorflow:  2.10.0, GPU: METAL
-OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Pytorch: 1.13.0.dev20221004, GPU: MPS Metal acceleratora
+- OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Tensorflow:  2.10.0, GPU: METAL
+- OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Pytorch: 1.13.0.dev20221004, GPU: MPS Metal accelerator

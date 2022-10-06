@@ -1,0 +1,11 @@
+[package]
+name = "neurust"
+version = "0.1.0"
+edition = "2021"
+
+[build]
+rustflags = "-l framework=Accelerate"
+
+[dependencies]
+ndarray = { features = ["blas"] }
+blas-src = { features = ["accelerate"] }
