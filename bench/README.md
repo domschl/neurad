@@ -58,7 +58,7 @@ of two matrices with random normal intialization. Measured after warm-up, minimu
 | [12000,12000]  |                |                       |             |    6319 ms        |
 | [14000,14000]  |                |                       |             |                   |
 
-## M1 Accelerate BLAS vs Torch MPS on M1 vs Tensorflow GPU on M1
+## M1 Accelerate BLAS vs Torch MPS on M1 vs Tensorflow GPU on M1 (all f32)
 
 Note: the benchmarks for Tensorflow and Pytorch forced calculation by accessing one
 element of the result of the matrix multiplication. 
@@ -100,3 +100,32 @@ If fusing is not possible, or for matrix dims < 1000, Accelerate is the better c
  
 - OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Tensorflow:  2.10.0, GPU: METAL
 - OS: Darwin Ventura 13 beta 10, Python: 3.10.6 (Conda) Pytorch: 1.13.0.dev20221004, GPU: MPS Metal accelerator
+
+## Rust vs C++ neurad (f32)
+
+C++ neurad BLAS vs Rust ndarray with M1 Accelerate support (32bit floats):
+
+| dim / computer | M1 Accel | Rust NDArray Acc. |
+| -------------- | -------- | ----------------- |
+| [2,2]          | 291 ns   |  41.00ns          |
+| [3,3]          | 333 ns   |  41.00ns          |
+| [4,4]          | 291 ns   |  41.00ns          |
+| [5,5]          | 291 ns   |  41.00ns          |
+| [6,6]          | 333 ns   |  83.00ns          |
+| [8,8]          | 333 ns   |  83.00ns          |
+| [10,10]        | 583 ns   |  291.00ns         |
+| [32,32]        | 791 ns   |  333.00ns         |
+| [64,64]        | 1833 ns  |  833.00ns         |
+| [128,128]      | 7125 ns  |  4.33µs           |
+| [256,256]      | 37500 ns |  26.50µs          |
+| [512,512]      | 249 µs   |  200.46µs         |
+| [1024,1024]    | 2357 µs  |  1.81ms           |
+| [2048,2048]    | 21963 µs |  18.50ms          |
+| [4096,4096]    | 164 ms   |  150.57ms         |
+| [8192,8192]    | 1296 ms  |  1.18s            |
+| [10000,10000]  | 2262 ms  |  2.06s            |
+| [12000,12000]  | 3730 ms  |  3.39s            |
+| [14000,14000]  | 6244 ms  |  5.65s            |
+| [20000,20000]  |          |  15.74s           |
+
+Rust ndarray is faster.
