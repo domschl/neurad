@@ -67,6 +67,11 @@ struct NRMatrixAtom {
             v[i] = 0;
         }
     }
+    void ones() {
+        for (NRSize i = 0; i < v.size(); i++) {
+            v[i] = 1;
+        }
+    }
     void unit() {
         zero();
         if (x < y) {
@@ -82,6 +87,13 @@ struct NRMatrixAtom {
     void randn(NRFloat mean, NRFloat stddev) {
         std::default_random_engine generator;
         std::normal_distribution<NRFloat> distribution(mean, stddev);
+        for (NRSize i = 0; i < v.size(); i++) {
+            v[i] = distribution(generator);
+        }
+    }
+    void randInt(NRSize min, NRSize max) {
+        std::default_random_engine generator;
+        std::uniform_int_distribution<NRSize> distribution(min, max);
         for (NRSize i = 0; i < v.size(); i++) {
             v[i] = distribution(generator);
         }
@@ -196,77 +208,43 @@ struct NRMatrixCore {
     }
     void zero() {
         // XXX children!
-        for (NRSize i = 0; i < l; i++) {
-            mx[i] = 0.0;
-            grad[i] = 0.0;
-        }
+        mx.zero();
+        grad.zero();
     }
     void ones() {
-        // XXX children!
-        for (NRSize i = 0; i < l; i++) {
-            mx[i] = 1.0;
-            grad[i] = 0.0;
-        }
+        mx.ones();
+        grad.zero();
     }
     void zeroGrad() {
-        for (NRSize i = 0; i < l; i++) {
-            grad[i] = 0.0;
-        }
+        grad.zero();
     }
     void onesGrad() {
-        for (NRSize i = 0; i < l; i++) {
-            grad[i] = 1.0;
-        }
+        grad.ones();
     }
     void unit() {
-        for (iy = 0; iy < y; iy++) {
-            ry = iy * x;
-            for (ix = 0; ix < x; ix++) {
-                if (iy != ix)
-                    mx[ry + ix] = 0.0;
-                else
-                    mx[ry + ix] = 1.0;
-                grad[i] = 0.0;
-            }
-        }
+        mx.unit();
+        grad.zero();
     }
     void t() {
-        for (iy = 0; iy < y; iy++) {
-            ry = iy * x;
-            for (ix = 0; ix < x; ix++) {
-                if (iy != ix) {
-                    rx = ix * y;
-                    std::swap(mx[ry + ix], mx[rx + iy]);
-                    std::swap(grad[ry + ix], grad[rx + iy]);
-                }
-            }
-        }
-        // std::swap(x, y);
+        mx = mx.t();
+        grad = grad.t();
     }
     void randNormal(NRFloat mean, NRFloat var) {
-        std::random_device rd{};
-        std::mt19937 gen{rd()};
-        std::normal_distribution<> dn{mean, var};
-        for (i = 0; i < l; i++) {
-            mx[i] = dn(gen);
-            grad[i] = 0;
-        }
+        mx.randn(mean, var);
+        grad.zero();
     }
-    void randInt(int a, int b) {  // Inclusive [a,b]
-        std::random_device rd{};
-        std::mt19937 gen{rd()};
-        std::uniform_int_distribution<> di{a, b};
-        for (i = 0; i < l; i++) {
-            mx[i] = di(gen);
-            grad[i] = 0;
-        }
+    void randInt(int a, int b) {
+        mx.randInt(a, b);
+        grad.zero();
     }
+    /*
     NRFloat get(NRSize yi, NRSize xi) {
         return mx[yi * x + xi];
     }
     void set(NRSize yi, NRSize xi, NRFloat v) {
         mx[yi * x + xi] = v;
     }
+    */
 };
 
 class NRMatrixHeap {
