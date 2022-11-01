@@ -38,15 +38,117 @@ typedef int NRSize;
 NRFloat NaN = std::nan("0");
 #endif
 
+struct NRMatrixAtom {
+    NRSize x, y;
+    vector<NRFloat> v;
+    bool transposed;
+    NRMatrixAtom(NRSize y, NRSize x, vector<NRFloat> v, bool transposed = false)
+        : y(y), x(x), v(v), transposed(transposed) {
+        if (x * y != v.size()) {
+            cout << "Error: matrix creation y=" << y << " x=" << x << " v.size()=" << v.size() << ", using empty data" << endl;
+            v = vector<NRFloat>(x * y);
+        }
+    }
+    NRMatrixAtom(NRSize y, NRSize x, bool transposed = false)
+        : y(y), x(x), v(x * y), transposed(transposed) {
+        v = vector<NRFloat>(x * y);
+    }
+    NRMatrixAtom() {
+        y = 0;
+        x = 0;
+        v = vector<NRFloat>();
+        transposed = false;
+    }
+    NRMatrixAtom t() {
+        return NRMatrixAtom(x, y, v, !transposed);
+    }
+    void zero() {
+        for (NRSize i = 0; i < v.size(); i++) {
+            v[i] = 0;
+        }
+    }
+    void unit() {
+        zero();
+        if (x < y) {
+            for (NRSize i = 0; i < x; i++) {
+                v[i * y + i] = 1;
+            }
+        } else {
+            for (NRSize i = 0; i < y; i++) {
+                v[i * x + i] = 1;
+            }
+        }
+    }
+    void randn(NRFloat mean, NRFloat stddev) {
+        std::default_random_engine generator;
+        std::normal_distribution<NRFloat> distribution(mean, stddev);
+        for (NRSize i = 0; i < v.size(); i++) {
+            v[i] = distribution(generator);
+        }
+    }
+    NRMatrixAtom operator+(NRMatrixAtom &m) {
+        if (x != m.x || y != m.y) {
+            cout << "Error: matrix addition x=" << x << " y=" << y << " m.x=" << m.x << " m.y=" << m.y << ", using empty data" << endl;
+            return NRMatrixAtom(0, 0);
+        }
+        NRMatrixAtom r(y, x);
+        for (NRSize i = 0; i < v.size(); i++) {
+            r.v[i] = v[i] + m.v[i];
+        }
+        return r;
+    }
+    NRMatrixAtom operator+(NRMatrixAtom &&m) {
+        if (x != m.x || y != m.y) {
+            cout << "Error: matrix addition x=" << x << " y=" << y << " m.x=" << m.x << " m.y=" << m.y << ", using empty data" << endl;
+            return NRMatrixAtom(0, 0);
+        }
+        NRMatrixAtom r(y, x);
+        for (NRSize i = 0; i < v.size(); i++) {
+            r.v[i] = v[i] + m.v[i];
+        }
+        return r;
+    }
+    // Matrix multiplication using CBLAS
+    NRMatrixAtom operator*(NRMatrixAtom &m) {
+        if (x != m.y) {
+            cout << "Error: matrix multiplication x=" << x << " y=" << y << " m.x=" << m.x << " m.y=" << m.y << ", using empty data" << endl;
+            return NRMatrixAtom(0, 0);
+        }
+        NRMatrixAtom r(y, m.x);
+#if defined(USE_SINGLE_PRECISION_FLOAT)
+        cblas_sgemm(CblasRowMajor, transposed ? CblasTrans : CblasNoTrans, m.transposed ? CblasTrans : CblasNoTrans, y, m.x, x, 1, v.data(), x, m.v.data(), m.x, 0, r.v.data(), m.x);
+#else
+        cblas_dgemm(CblasRowMajor, transposed ? CblasTrans : CblasNoTrans, m.transposed ? CblasTrans : CblasNoTrans, y, m.x, x, 1, v.data(), x, m.v.data(), m.x, 0, r.v.data(), m.x);
+#endif
+        return r;
+    }
+    NRMatrixAtom operator*(NRMatrixAtom &&m) {
+        if (x != m.y) {
+            cout << "Error: matrix multiplication x=" << x << " y=" << y << " m.x=" << m.x << " m.y=" << m.y << ", using empty data" << endl;
+            return NRMatrixAtom(0, 0);
+        }
+        NRMatrixAtom r(y, m.x);
+#if defined(USE_SINGLE_PRECISION_FLOAT)
+        cblas_sgemm(CblasRowMajor, transposed ? CblasTrans : CblasNoTrans, m.transposed ? CblasTrans : CblasNoTrans, y, m.x, x, 1, v.data(), x, m.v.data(), m.x, 0, r.v.data(), m.x);
+#else
+        cblas_dgemm(CblasRowMajor, transposed ? CblasTrans : CblasNoTrans, m.transposed ? CblasTrans : CblasNoTrans, y, m.x, x, 1, v.data(), x, m.v.data(), m.x, 0, r.v.data(), m.x);
+#endif
+        return r;
+    }
+};
+
 struct NRMatrixCore {
-    vector<NRFloat> mx;
-    vector<NRFloat> grad;
-    NRSize x;
-    NRSize y;
-    NRSize l;
+    // vector<NRFloat> mx;
+    // vector<NRFloat> grad;
+    // NRSize x;
+    // NRSize y;
+    // NRSize l;
+    NRMatrixAtom mx;
+    NRMatrixAtom grad;
     std::string name = "";
     string op;
     vector<NRMatrixCore *> children;
+    std::function<void()> backward;
     bool bValid = false;
 
   private:
@@ -54,39 +156,43 @@ struct NRMatrixCore {
 
   public:
     NRMatrixCore() {
-        mx = {};
-        grad = {};
-        x = 0;
-        y = 0;
-        l = 0;
+        // mx = {};
+        // grad = {};
+        // x = 0;
+        // y = 0;
+        // l = 0;
+        mx = NRMatrixAtom();
+        grad = NRMatrixAtom();
         name = "null";
         op = "";
         bValid = false;
     }
     NRMatrixCore(NRSize y, NRSize x, string name, string op = "", vector<NRMatrixCore *> children = {})
-        : y(y), x(x), name(name), op(op), children(children) {
-        l = x * y;
-        mx = vector<NRFloat>(l);
-        grad = mx;
+        : name(name), op(op), children(children) {
+        // l = x * y;
+        mx = NRMatrixAtom(y, x);
+        grad = NRMatrixAtom(y, x);
         bValid = true;
-        zeroGrad();
+        grad.zero();
     }
     NRMatrixCore(NRSize y, NRSize x, string name, vector<NRFloat> v, string op = "", vector<NRMatrixCore *> children = {})
-        : y(y), x(x), name(name), op(op), children(children) {
-        l = x * y;
-        if (v.size() == l)
-            mx = v;
-        else {
-            cout << "ERROR: incompatible length of initializing vector for matrix " << name << ", partial init!" << endl;
-            mx = vector<NRFloat>(l);
-            l = std::min(v.size(), mx.size());
-            for (int i = 0; i < l; i++) {
-                mx[i] = v[i];
-            }
-        }
-        grad = mx;
+        : name(name), op(op), children(children) {
+        mx = NRMatrixAtom(y, x, v);
+        grad = NRMatrixAtom(y, x);
+        // l = x * y;
+        // if (v.size() == l)
+        //    mx = v;
+        // else {
+        //    cout << "ERROR: incompatible length of initializing vector for matrix " << name << ", partial init!" << endl;
+        //    mx = vector<NRFloat>(l);
+        //    l = std::min(v.size(), mx.size());
+        //    for (int i = 0; i < l; i++) {
+        //        mx[i] = v[i];
+        //    }
+        //}
+        // grad = mx;
+        grad.zero();
         bValid = true;
-        zeroGrad();
     }
     void zero() {
         // XXX children!
@@ -287,6 +393,21 @@ class NRMatrix {
                 pc->mx[ry + ix] = pa->mx[ry + ix] + pb->mx[ry + ix];
             }
         }
+        /*
+        pc->backward = [pma, pmb, pc]() {
+            pma->pm.grad = pc->grad;
+            pb->grad += pc->grad;
+
+            for (int iy = 0; iy < pa->y; iy++) {
+                int ry = iy * pa->x;
+                for (int ix = 0; ix < pa->x; ix++) {
+                    pa->grad[ry + ix] += pc->grad[ry + ix];
+                    pb->grad[ry + ix] += pc->grad[ry + ix];
+                }
+            }
+
+    }
+    */
         return ph->getP(name);  // XXX redundant call
         // s.children.push_back();
         // s.children.push_back();
@@ -338,6 +459,20 @@ class NRMatrix {
         cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, pa->y, pb->x, pa->x, 1.0, (NRFloat *)&(pa->mx[0]), pa->x,
                     (NRFloat *)&(pb->mx[0]), pb->x, 0.0, (NRFloat *)&(pc->mx[0]), pb->x);
 #endif
+        /*
+                pc->backward = [pa, pb, pc]() {
+                    pc->grad * pb->t();
+                    NRMatrixCore d = NRMatrixCore(ph, pc->y, pb->x, "pd", "pd");
+        #if defined(USE_SINGLE_PRECISION_FLOAT)
+                    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, pc->y, pb->x, pc->y, 1.0, (NRFloat *)&(pc->grad[0]), pc->x,
+                                (NRFloat *)&(pb->mx[0]), pb->x, 0.0, (NRFloat *)&(pd->mx[0]), pb->x);
+        #else
+                    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, pa->y, pb->x, pa->x, 1.0, (NRFloat *)&(pa->mx[0]), pa->x,
+                                (NRFloat *)&(pb->mx[0]), pb->x, 0.0, (NRFloat *)&(pc->mx[0]), pb->x);
+        #endif
+                    pa->grad +=
+                };
+                */
         // C.children.push_back(NRMatrix(*this));
         // C.children.push_back(NRMatrix(r));
         return ph->getP(name);  // XXX redundant call
