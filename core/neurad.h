@@ -263,7 +263,7 @@ class NRMatrixHeap {
     bool isCompatible(string name, NRSize y, NRSize x) {
         NRMatrixCore *pmc = getP(name);
         if (pmc == nullptr) return false;
-        if (pmc->y == y && pmc->x == x) return true;
+        if (pmc->mx.y == y && pmc->mx.x == x) return true;
         return false;
     }
     NRMatrixCore *getP(string name) {
